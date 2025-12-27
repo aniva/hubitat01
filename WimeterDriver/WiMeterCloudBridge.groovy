@@ -1,27 +1,29 @@
 /**
- * WiMeter Cloud Bridge
- * Author: Gemini (Hubitat Architect Persona)
- * * Description: Polls WiMeter JSON, creates child devices, and converts units to Hubitat Standards.
- * - kW/W -> converted to Watts (power)
- * - kWh/Wh -> converted to kWh (energy)
- * - $ -> stored as 'cost' attribute
+ * WiMeter Cloud Bridge (Single Location - Clean Raw Names)
+ * v2.4 - No Duplicates, Fixed Formatting
  */
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", version: "1.0.0") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "2.4") {
         capability "Refresh"
         capability "Sensor"
         
         attribute "lastUpdate", "string"
         attribute "apiStatus", "string"
+        attribute "location", "string"
+        
+        command "clearAllStates"
     }
-
+    
     preferences {
-        input "apiUrl", "text", title: "WiMeter API URL", required: true, description: "Paste the full pubmatrix URL here"
+        input "apiUrl", "text", title: "WiMeter API URL", required: true
+        input "targetLocation", "text", title: "Target Location Name", required: true, description: "e.g. Andrei's House"
         input "pollInterval", "enum", title: "Polling Interval", options: ["Manual", "1 Minute", "5 Minutes", "15 Minutes", "30 Minutes"], defaultValue: "5 Minutes"
         input "debugMode", "bool", title: "Enable Debug Logging", defaultValue: false
     }
 }
+
+def driverVersion() { return "2.4" }
 
 def installed() { initialize() }
 
@@ -40,9 +42,19 @@ def initialize() {
     }
 }
 
+def clearAllStates() {
+    log.warn "Clearing all current states..."
+    device.currentStates.each { 
+        device.deleteCurrentState(it.name) 
+    }
+    log.info "All states cleared."
+}
+
 def refresh() {
-    if (!apiUrl) {
-        logError "API URL is missing in preferences."
+    log.info "WiMeter Driver v${driverVersion()} | Refresh initiated at: ${new Date()}"
+
+    if (!apiUrl || !targetLocation) {
+        logError "Missing API URL or Target Location."
         return
     }
     
@@ -59,9 +71,9 @@ def refresh() {
             if (resp.data && resp.data.ret == 1) {
                 sendEvent(name: "apiStatus", value: "Online")
                 sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
-                processData(resp.data.devices)
+                processLocationData(resp.data.devices)
             } else {
-                logError "API returned error or invalid format: ${resp.data}"
+                logError "API returned error: ${resp.data}"
                 sendEvent(name: "apiStatus", value: "Error")
             }
         }
@@ -71,70 +83,68 @@ def refresh() {
     }
 }
 
-def processData(devices) {
+def processLocationData(devices) {
+    // Set Main Location
+    sendEvent(name: "location", value: targetLocation, isStateChange: true)
+
     devices.each { item ->
-        // Create a unique Device Network ID (DNI) based on name and unit type
-        // e.g., WIMETER_Range_kitchen_Energy
-        def cleanName = item.name.replaceAll("[^a-zA-Z0-9]", "")
-        def type = determineType(item.unit)
-        def dni = "WIMETER_${cleanName}_${type}"
+        // Filter by Location
+        if (item.location.trim() != targetLocation.trim()) return
+
+        // 1. Calculate Values
+        def result = calculateValue(item)
         
-        def child = getChildDevice(dni)
+        // 2. Format Name
+        def nameStr = item.name.trim()
         
-        // 1. Create Child if missing
-        if (!child) {
-            if (debugMode) log.debug "Creating child device: ${dni}"
-            // Use 'Generic Component' drivers which are built-in to Hubitat
-            String driverName = "Generic Component Omni Sensor" // Fallback
-            if (type == "Power") driverName = "Generic Component Power Meter"
-            if (type == "Energy") driverName = "Generic Component Energy Meter"
-            
-            try {
-                addChildDevice("hubitat", driverName, dni, [name: "WiMeter - ${item.name} (${type})", isComponent: true])
-                child = getChildDevice(dni)
-            } catch (e) {
-                logError "Could not create child device. Ensure 'Generic Component' drivers are enabled. Error: ${e}"
-            }
-        }
+        // Remove 's (Specific request: "Andrei's" -> "Andrei")
+        nameStr = nameStr.replaceAll("'s", "")
+        nameStr = nameStr.replaceAll("'S", "")
         
-        // 2. Update Child
-        if (child) {
-            updateChildDevice(child, item, type)
-        }
+        // Determine suffix (cost/kw/kwh)
+        def safeUnit = result.unit == "\$" ? "cost" : result.unit
+        
+        // Construct Raw Name: lower case, spaces to underscores, remove special chars
+        def rawName = "${nameStr}_${safeUnit}"
+                        .toLowerCase()
+                        .replaceAll("[^a-z0-9]", "_") // Replace non-alphanumeric with _
+                        .replaceAll("_+", "_")         // Remove duplicate underscores (e.g. __)
+                        .replaceAll("_+\$", "")        // Remove trailing underscores
+
+        // 3. Send Event (Only ONE event per metric to avoid duplicates)
+        if (debugMode) log.debug "Setting: '${rawName}' = ${result.value}"
+        
+        sendEvent(name: rawName, value: result.value, unit: result.unit, isStateChange: true)
     }
 }
 
-def determineType(unit) {
-    if (unit == "kW" || unit == "W") return "Power"
-    if (unit == "kWh" || unit == "Wh") return "Energy"
-    if (unit == "\$") return "Cost"
-    return "Sensor"
-}
-
-def updateChildDevice(child, item, type) {
-    def value = item.reading.toFloat()
+def calculateValue(item) {
+    def rawVal = item.reading.toFloat()
+    def val = 0.0
+    def unitStr = item.unit
     
-    // Convert units to Hubitat Standards
     if (item.unit == "kW") {
-        // Hubitat expects Watts for 'power'
-        value = value * 1000
-        child.parse([[name: "power", value: value, unit: "W", descriptionText: "${child.displayName} power is ${value} W"]])
+        val = rawVal.round(3) 
+        unitStr = "kW"
     } 
     else if (item.unit == "W") {
-        child.parse([[name: "power", value: value, unit: "W", descriptionText: "${child.displayName} power is ${value} W"]])
+        val = (rawVal / 1000).round(3) 
+        unitStr = "kW"
     }
     else if (item.unit == "Wh") {
-        // Hubitat expects kWh for 'energy'
-        value = value / 1000
-        child.parse([[name: "energy", value: value, unit: "kWh", descriptionText: "${child.displayName} energy is ${value} kWh"]])
+        val = (rawVal / 1000).round(3) 
+        unitStr = "kWh"
     }
     else if (item.unit == "kWh") {
-        child.parse([[name: "energy", value: value, unit: "kWh", descriptionText: "${child.displayName} energy is ${value} kWh"]])
+        val = rawVal.round(3)
+        unitStr = "kWh"
     }
-    else {
-        // Generic fallback for Cost ($) or others
-        child.parse([[name: "variable", value: value, unit: item.unit, descriptionText: "${child.displayName} is ${value} ${item.unit}"]])
+    else if (item.unit == "\$") {
+        val = rawVal.round(2)
+        unitStr = "\$"
     }
+    
+    return [value: val, unit: unitStr]
 }
 
 def logsOff() {
