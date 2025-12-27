@@ -5,7 +5,7 @@
     {
       "name": "WiMeter Cloud Bridge",
       "category": "Integrations",
-      "location": "https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/wi-meter_driver/packageManifest.json",
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/WimeterDriver/packageManifest.json",
       "description": "Cloud Bridge for WiMeter energy monitoring."
     }
   ]

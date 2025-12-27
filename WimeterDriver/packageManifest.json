@@ -10,7 +10,7 @@
       "id": "92d05738-9572-4d04-9549-044738734960",
       "name": "WiMeter Cloud Bridge",
       "namespace": "user",
-      "location": "https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/wi-meter_driver/WiMeterCloudBridge.groovy",
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/WimeterDriver/WiMeterCloudBridge.groovy",
       "required": true
     }
   ]
