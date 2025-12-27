@@ -1,16 +1,16 @@
 {
   "packageName": "WiMeter Cloud Bridge",
-  "author": "anoiva",
+  "author": "Aniva",
   "version": "1.0.0",
   "minimumHEVersion": "2.2.0",
   "dateReleased": "2025-12-27",
   "releaseNotes": "Initial release of WiMeter Cloud Bridge.",
   "drivers": [
     {
-      "id": "12345678-1234-1234-1234-1234567890ab", 
+      "id": "92d05738-9572-4d04-9549-044738734960",
       "name": "WiMeter Cloud Bridge",
       "namespace": "user",
-      "location": "https://raw.githubusercontent.com/YourUser/Hubitat-Drivers/main/drivers/WiMeterCloudBridge.groovy",
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/wi-meter_driver/WiMeterCloudBridge.groovy",
       "required": true
     }
   ]
