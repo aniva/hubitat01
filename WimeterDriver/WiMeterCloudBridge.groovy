@@ -8,7 +8,7 @@
  */
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", version: "1.0.0) {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", version: "1.0.0") {
         capability "Refresh"
         capability "Sensor"
         
