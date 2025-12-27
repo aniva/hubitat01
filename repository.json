@@ -5,7 +5,7 @@
   "payPalUrl": "https://paypal.me/AndreiIvanov420",
   "packages": [
     {
-      "name": "WiMeter Driver",
+      "name": "WiMeter Cloud Bridge",
       "category": "Integrations",
       "tags": [
         "Monitoring",
