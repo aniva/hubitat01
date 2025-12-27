@@ -1,12 +1,18 @@
+
 {
-  "author": "Aniva",
+  "author": "aniva",
   "gitHubUrl": "https://github.com/aniva/hubitat01",
+  "payPalUrl": "https://paypal.me/AndreiIvanov420",
   "packages": [
     {
-      "name": "WiMeter Cloud Bridge",
+      "name": "WiMeter Driver",
       "category": "Integrations",
-      "location": "https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/WimeterDriver/packageManifest.json",
-      "description": "Cloud Bridge for WiMeter energy monitoring."
+      "tags": [
+        "Monitoring",
+        "Energy"
+      ],
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/packageManifest.json",
+      "description": "Driver for WiMeter device."
     }
   ]
 }
