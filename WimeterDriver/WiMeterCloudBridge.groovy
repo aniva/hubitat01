@@ -1,13 +1,14 @@
 /**
  * WiMeter Cloud Bridge (Parent)
  *
+ * v4.10 - Fixed 'html_tile' metadata and stabilized power calculation.
  * v4.9 - Added 'PowerMeter' capability for correct icons and standard app integration.
- * v4.8 - Implemented "Safe Mode" HTML tile generation via 'apiStatus' for "Live Status" dashboard cards.
+ * v4.8 - Implemented "Safe Mode" HTML tile generation via 'apiStatus', subsequently removed in v4.10, for "Live Status" dashboard cards.
  * v4.7 - Added 'power' attribute bridge to support standard dashboard color templates.
  */
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.7") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.10") {
         capability "PowerMeter" 
         capability "EnergyMeter"
         capability "Refresh"
@@ -24,11 +25,14 @@ metadata {
         attribute "icon", "string"
         attribute "html_icon", "string"
         
+        // NEW: Officially defined so Dashboard can see it
+        attribute "html_tile", "string"
+        
         // PARENT ATTRIBUTES
         attribute "location_power_real-time_kw", "number"
         attribute "location_power_real-time_w", "number"
         
-        // DASHBOARD BRIDGE (Standard Power Attribute for Colors)
+        // DASHBOARD BRIDGE
         attribute "power", "number" 
         
         attribute "location_power_per_day_kwh", "number"
@@ -51,7 +55,7 @@ metadata {
     }
 }
 
-def driverVersion() { return "4.9" }
+def driverVersion() { return "4.10" }
 
 def installed() { initialize() }
 
@@ -154,7 +158,6 @@ def updateParentState(items) {
                 def attrName = "location_${res.baseType}${res.suffix}${res.unitSuffix}"
                 sendEvent(name: attrName, value: res.value, unit: res.unit)
                 
-                // DASHBOARD BRIDGE: Mirror to 'power' for templates
                 if (attrName == "location_power_real-time_kw") {
                      sendEvent(name: "power", value: res.value, unit: "kW")
                 }
@@ -162,40 +165,51 @@ def updateParentState(items) {
         }
     }
 
-    // 2. DASHBOARD TILE GENERATION (HTML)
-    def powerVal = items.find { it.unit == "kW" || it.unit == "W" }?.reading?.toFloat() ?: 0
-    // Normalize to kW for color logic
-    if (items.find { it.unit == "W" }) powerVal = powerVal / 1000
+    // --- HTML TILE GENERATION (FIXED & SAFER) ---
+    def powerVal = 0.0
+    try {
+        def powerItem = items.find { it.unit == "kW" || it.unit == "W" }
+        if (powerItem && powerItem.reading != null) {
+            // Safer conversion using BigDecimal to avoid crashes on weird data
+            def rawVal = powerItem.reading.toBigDecimal()
+            if (powerItem.unit == "W") {
+                powerVal = (rawVal / 1000).toFloat().round(2)
+            } else {
+                powerVal = rawVal.toFloat().round(2)
+            }
+        }
+    } catch (e) {
+        log.warn "Tile calculation error (defaulting to 0): ${e}"
+        powerVal = 0.0
+    }
 
-    def cardColor = "#7f8c8d" // Grey (< 1kW)
+    def cardColor = "#7f8c8d" // Grey
     if (powerVal >= 6.0) cardColor = "#c0392b" // Red
     else if (powerVal >= 3.0) cardColor = "#f1c40f" // Yellow
     else if (powerVal >= 1.0) cardColor = "#27ae60" // Green
 
-    /* * DASHBOARD BRIDGE: 'apiStatus' Hijack
-     * We use the standard 'apiStatus' attribute to carry this HTML payload because
-     * custom attributes (e.g., 'html_tile') often fail to appear in the Hubitat
-     * Dashboard "Attribute" dropdown list due to caching bugs. 'apiStatus' is 
-     * always available and renders the HTML correctly.
-     */
+    // Nuclear CSS to remove padding
     def tileHtml = """
     <div style='
-        width: 100%; 
-        height: 100%;
+        width: 120% !important; 
+        height: 120% !important;
+        margin-top: -10% !important;
+        margin-left: -10% !important;
         background-color: ${cardColor}; 
         color: white;
         display: flex; 
         flex-direction: column; 
         align-items: center; 
         justify-content: center;
-        border-radius: 4px;
+        border-radius: 15px;
     '>
-        <div style='font-size:0.75rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>House Pwr</div>
-        <div style='font-size:1.4rem; font-weight:bold; line-height:1.1;'>${powerVal} <span style='font-size:0.6em'>kW</span></div>
+        <div style='font-size:0.8rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>House Pwr</div>
+        <div style='font-size:1.5rem; font-weight:bold; line-height:1.1;'>${powerVal} <span style='font-size:0.6em'>kW</span></div>
     </div>
     """
     
-    sendEvent(name: "apiStatus", value: tileHtml)
+    // Now correctly sending to 'html_tile'
+    sendEvent(name: "html_tile", value: tileHtml)
 }
 
 def updateChildDevice(name, items) {

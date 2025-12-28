@@ -60,8 +60,7 @@ This driver generates a pre-formatted, color-coded HTML tile (Green/Yellow/Red) 
 2.  Click **Add Tile (+)**.
 3.  **Pick a Device:** Select your `WiMeter Cloud Bridge` (or any Child Device).
 4.  **Pick a Template:** Select **Attribute**.
-5.  **Pick an Attribute:** Select **`apiStatus`**.
-    * *Note: We use `apiStatus` because it reliably displays the HTML graphic without caching issues.*
+5.  **Pick an Attribute:** Select **`html_tile`**.
 6.  **Click Add Tile.**
 
 ---
