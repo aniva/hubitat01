@@ -1,6 +1,6 @@
 /**
  * WiMeter Child Device
- * v4.6 - Added Watt Support (_w)
+ * v4.8 - Dashboard Bridge (Standard 'power' attribute)
  */
 
 metadata {
@@ -13,9 +13,12 @@ metadata {
         attribute "icon", "string"
         attribute "html_icon", "string"
 
-        // Explicit Attributes
+        // EXPLICIT ATTRIBUTES
         attribute "power_real-time_kw", "number"
-        attribute "power_real-time_w", "number" // NEW
+        attribute "power_real-time_w", "number"
+        
+        // DASHBOARD BRIDGE
+        attribute "power", "number" 
         
         attribute "power_per_day_kwh", "number"
         attribute "power_per_week_kwh", "number"
@@ -30,7 +33,7 @@ metadata {
     }
 }
 
-def driverVersion() { return "4.6" }
+def driverVersion() { return "4.8" }
 
 def installed() { initialize() }
 
@@ -57,6 +60,11 @@ def parseItems(items) {
             if (res.baseType) {
                 def attrName = "${res.baseType}${res.suffix}${res.unitSuffix}"
                 sendEvent(name: attrName, value: res.value, unit: res.unit)
+                
+                // DASHBOARD BRIDGE: Mirror to 'power'
+                if (attrName == "power_real-time_kw") {
+                     sendEvent(name: "power", value: res.value, unit: "kW")
+                }
             }
         }
     }
@@ -66,9 +74,7 @@ def parseItems(items) {
     }
 }
 
-/**
- * UPDATED LOGIC: Returns a List of Maps to support dual outputs (kW and W)
- */
+// Logic duplicated for Child context
 def calculateValueAndSuffix(item) {
     def rawVal = item.reading.toFloat()
     def rawUnit = item.unit ? item.unit.trim() : ""
@@ -76,44 +82,23 @@ def calculateValueAndSuffix(item) {
     
     def results = []
 
-    // 1. COST Logic
     if (rawUnit == "\$" || rawUnit == '$') {
         def suffix = getIntervalSuffix(interval)
         results << [value: rawVal.round(2), unit: "\$", baseType: "cost", suffix: suffix, unitSuffix: "_\$"]
     } 
-    // 2. POWER/ENERGY Logic
     else if (rawUnit.contains("W") || rawUnit.contains("kW") || rawUnit.contains("Wh") || rawUnit.contains("kWh")) {
-        
         def suffix = getIntervalSuffix(interval)
-        
         if (interval == 0) {
-            // REAL-TIME: Generate BOTH kW and W
-            
-            // Calculate kW Value
-            def val_kW = 0.0
-            if (rawUnit == "W" || rawUnit == "Wh") val_kW = (rawVal / 1000).round(3)
-            else val_kW = rawVal.round(3)
-            
-            // Calculate W Value
-            def val_W = 0.0
-            if (rawUnit == "kW" || rawUnit == "kWh") val_W = (rawVal * 1000).round(1)
-            else val_W = rawVal.round(1)
+            def val_kW = (rawUnit == "W" || rawUnit == "Wh") ? (rawVal / 1000).round(3) : rawVal.round(3)
+            def val_W = (rawUnit == "kW" || rawUnit == "kWh") ? (rawVal * 1000).round(1) : rawVal.round(1)
 
-            // Add kW entry
             results << [value: val_kW, unit: "kW", baseType: "power", suffix: suffix, unitSuffix: "_kw"]
-            // Add W entry
             results << [value: val_W, unit: "W", baseType: "power", suffix: suffix, unitSuffix: "_w"]
-            
         } else {
-            // INTERVAL (Energy): Only kWh (as before)
-            def val_kWh = 0.0
-            if (rawUnit == "W" || rawUnit == "Wh") val_kWh = (rawVal / 1000).round(3)
-            else val_kWh = rawVal.round(3)
-            
+            def val_kWh = (rawUnit == "W" || rawUnit == "Wh") ? (rawVal / 1000).round(3) : rawVal.round(3)
             results << [value: val_kWh, unit: "kWh", baseType: "power", suffix: suffix, unitSuffix: "_kwh"]
         }
     }
-
     return results
 }
 
