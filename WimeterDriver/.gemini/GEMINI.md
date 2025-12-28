@@ -236,3 +236,17 @@ def cleanItems = items.collect { new HashMap(it) }
 ## 6. Deployment (HPM)
 * **Manifest:** `packageManifest.json` must list **both** drivers.
 * **Versioning:** Version numbers in the JSON manifest must match the `driverVersion()` in the Groovy code.
+
+## 7. Future Roadmap / To-Do (v4.11+)
+
+1.  **Standardize State Variables (CamelCase)**
+    * **Goal:** Refactor variable naming from underscores (`power_real_time`) to standard camelCase (`powerRealTime`) to ensure consistency between raw names and Hubitat's variable display.
+    * **Impact:** Will require wiping/recreating child devices to remove old attribute names.
+
+2.  **Fix Persistent "Unknown" (?) Device Icons**
+    * **Issue:** Even with `capability "PowerMeter"`, child devices like "Boiler" or "Range" often display a generic `?` icon instead of a Lightning Bolt or Plug.
+    * **Investigation:** Determine if Hubitat requires a specific "Device Type" definition or if the icon is cached at the platform level.
+
+3.  **Dynamic Titles for HTML Tiles**
+    * **Issue:** Currently, child device tiles (green/red cards) hardcode the title as "POWER".
+    * **Fix:** Pass the dynamic device name (e.g., "Boiler", "Washer") from the API response into the HTML generation logic so the tile says "BOILER PWR" instead of generic "POWER".
