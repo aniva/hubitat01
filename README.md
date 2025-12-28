@@ -9,4 +9,4 @@ A hybrid Parent/Child driver system that bridges the WiMeter Energy Monitoring A
 
 * **Current Version:** v4.8
 * **Key Features:** Real-time polling, HTML Dashboard tiles, and strict attribute naming (kW/kWh/$).
-* **Documentation:** [Read full documentation and installation instructions](hubitat01/WimeterDriver/README.md)
+* **Documentation:** [Read full documentation and installation instructions](WimeterDriver/README.md)
