@@ -1,10 +1,15 @@
 /**
  * WiMeter Cloud Bridge (Parent)
- * v4.8 - Dashboard Bridge (Standard 'power' attribute)
+ *
+ * v4.9 - Added 'PowerMeter' capability for correct icons and standard app integration.
+ * v4.8 - Implemented "Safe Mode" HTML tile generation via 'apiStatus' for "Live Status" dashboard cards.
+ * v4.7 - Added 'power' attribute bridge to support standard dashboard color templates.
  */
 
 metadata {
     definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.7") {
+        capability "PowerMeter" 
+        capability "EnergyMeter"
         capability "Refresh"
         capability "Initialize"
         capability "Sensor"
@@ -46,7 +51,7 @@ metadata {
     }
 }
 
-def driverVersion() { return "4.8" }
+def driverVersion() { return "4.9" }
 
 def installed() { initialize() }
 

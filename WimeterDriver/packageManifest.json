@@ -1,7 +1,7 @@
 {
   "packageName": "WiMeter Cloud Bridge",
   "author": "Aniva",
-  "version": "4.8",
+  "version": "4.9",
   "minimumHEVersion": "2.3.0",
   "dateReleased": "2025-12-28",
   "releaseNotes": "Cumulative update for WiMeter Cloud Bridge Driver. Includes latest stability improvements, strict attribute naming standards (real-time W/kW & cost), and optimized Parent/Child device architecture.",

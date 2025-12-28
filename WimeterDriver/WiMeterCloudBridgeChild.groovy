@@ -1,10 +1,15 @@
 /**
  * WiMeter Child Device
- * v4.8 - Dashboard Bridge (Standard 'power' attribute)
+ *
+ * v4.9 - Added standard 'PowerMeter' & 'EnergyMeter' capabilities. Fixes device icon (shows Lightning Bolt instead of '?') and enables selection in standard energy apps.
+ * v4.8 - Implemented "Safe Mode" HTML tile generation via 'apiStatus' to prevent dashboard caching issues and device page layout breaks.
+ * v4.7 - Added 'power' attribute bridge to mirror real-time usage for standard dashboard templates.
  */
 
 metadata {
     definition (name: "WiMeter Child Device", namespace: "aniva", author: "aniva") {
+        capability "PowerMeter" 
+        capability "EnergyMeter"
         capability "Sensor"
         capability "Initialize"
         capability "Refresh"
@@ -33,7 +38,7 @@ metadata {
     }
 }
 
-def driverVersion() { return "4.8" }
+def driverVersion() { return "4.9" }
 
 def installed() { initialize() }
 
