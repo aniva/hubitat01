@@ -1,10 +1,10 @@
 /**
  * WiMeter Cloud Bridge (Single Location - Clean Raw Names)
- * v2.4 - No Duplicates, Fixed Formatting
+ * v2.5 - Fixed A/C Handling (Concatenate slashes)
  */
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge Driver", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "2.4") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "2.5") {
         capability "Refresh"
         capability "Sensor"
         
@@ -23,7 +23,7 @@ metadata {
     }
 }
 
-def driverVersion() { return "2.4" }
+def driverVersion() { return "2.5" }
 
 def installed() { initialize() }
 
@@ -101,6 +101,9 @@ def processLocationData(devices) {
         nameStr = nameStr.replaceAll("'s", "")
         nameStr = nameStr.replaceAll("'S", "")
         
+        // NEW: Remove forward slashes so they concatenate ("A/C" -> "AC")
+        nameStr = nameStr.replaceAll("/", "")
+
         // Determine suffix (cost/kw/kwh)
         def safeUnit = result.unit == "\$" ? "cost" : result.unit
         

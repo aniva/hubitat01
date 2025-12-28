@@ -1,8 +1,8 @@
 {
   "packageName": "WiMeter Cloud Bridge",
   "author": "Aniva",
-  "version": "2.4",
-  "minimumHEVersion": "2.4",
+  "version": "2.5",
+  "minimumHEVersion": "2.5",
   "dateReleased": "2025-12-27",
   "releaseNotes": "Initial release of WiMeter Cloud Bridge Driver",
   "drivers": [
