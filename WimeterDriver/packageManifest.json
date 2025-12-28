@@ -4,7 +4,7 @@
   "version": "4.6",
   "minimumHEVersion": "2.3.0",
   "dateReleased": "2025-12-28",
-  "releaseNotes": "v3.1 update: Splits logic into Parent/Child drivers to support custom cost/power attributes per interval.",
+  "releaseNotes": "Cumulative update for WiMeter Cloud Bridge Driver. Includes latest stability improvements, strict attribute naming standards (real-time W/kW & cost), and optimized Parent/Child device architecture.",
   "drivers": [
     {
       "id": "92d05738-9572-4d04-9549-044738734960",
