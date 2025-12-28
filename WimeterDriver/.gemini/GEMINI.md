@@ -207,6 +207,7 @@ If modifying this driver, strictly adhere to these fixes established during v1.0
 // Parent Driver: processData()
 def cleanItems = items.collect { new HashMap(it) }
 ```
+
 ### C. Initialization & Versioning
 * **Requirement:** Both drivers must include `capability "Initialize"`.
 * **Requirement:** Both drivers must maintain a `_version` attribute (e.g., `4.5`) to verify the code update was applied successfully.
