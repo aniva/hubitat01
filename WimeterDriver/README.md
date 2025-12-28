@@ -13,7 +13,31 @@ It uses a **Parent-Child** architecture:
 
 ---
 
-## 1. Configuration
+## 1. Installation (Hubitat Package Manager)
+The recommended way to install and keep this driver up to date is via **Hubitat Package Manager (HPM)**.
+
+### Option A: If the driver is in the official HPM Repository
+1.  Open **Hubitat Package Manager**.
+2.  Select **Install**.
+3.  Select **Search by Keywords** and type `WiMeter` (or search by tag `Energy`).
+4.  Select **WiMeter Cloud Bridge** and click **Install**.
+
+### Option B: If adding Manually (Custom Repository)
+If the package is not yet listed in the main repository, you can add it directly using the manifest URL:
+
+1.  Open **Hubitat Package Manager**.
+2.  Select **Settings** (the gear icon or "Package Manager Settings").
+3.  Click **Add a Custom Repository**.
+4.  Paste this URL into the field:
+    `https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/packageManifest.json`
+5.  Click **Save**.
+6.  Go back to the main menu and select **Install**.
+7.  Select **Search by Name** (or Keywords) and search for `WiMeter`.
+8.  Select **WiMeter Cloud Bridge** and click **Install**.
+
+---
+
+## 2. Configuration
 After installing the driver, open the **WiMeter Cloud Bridge** device page and scroll to the **Preferences** section to configure the connection.
 
 ### Required Settings
@@ -28,7 +52,7 @@ After installing the driver, open the **WiMeter Cloud Bridge** device page and s
 
 ---
 
-## 2. Dashboard Setup: The "Live Status" Card (Recommended)
+## 3. Dashboard Setup: The "Live Status" Card
 This driver generates a pre-formatted, color-coded HTML tile (Green/Yellow/Red) that displays real-time power usage.
 
 ### How to Add the Tile
@@ -42,7 +66,7 @@ This driver generates a pre-formatted, color-coded HTML tile (Green/Yellow/Red) 
 
 ---
 
-## 3. Optional: Bridging to a "Virtual Omni Sensor"
+## 4. Optional: Bridging to a "Virtual Omni Sensor"
 If you prefer to use standard Hubitat "Power Meter" tiles or integrate with other apps (like HomeKit bridges), you can sync the data to a standard **Virtual Omni Sensor**.
 
 ### Step 1: Create the Virtual Device
