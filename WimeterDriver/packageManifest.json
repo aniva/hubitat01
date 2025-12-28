@@ -1,8 +1,8 @@
 {
   "packageName": "WiMeter Cloud Bridge",
   "author": "Aniva",
-  "version": "4.5",
-  "minimumHEVersion": "4.5",
+  "version": "4.6",
+  "minimumHEVersion": "2.3.0",
   "dateReleased": "2025-12-28",
   "releaseNotes": "v3.1 update: Splits logic into Parent/Child drivers to support custom cost/power attributes per interval.",
   "drivers": [
