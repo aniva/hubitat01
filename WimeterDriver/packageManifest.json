@@ -1,16 +1,23 @@
 {
   "packageName": "WiMeter Cloud Bridge",
   "author": "Aniva",
-  "version": "2.5",
-  "minimumHEVersion": "2.5",
-  "dateReleased": "2025-12-27",
-  "releaseNotes": "Initial release of WiMeter Cloud Bridge Driver",
+  "version": "4.5",
+  "minimumHEVersion": "4.5",
+  "dateReleased": "2025-12-28",
+  "releaseNotes": "v3.1 update: Splits logic into Parent/Child drivers to support custom cost/power attributes per interval.",
   "drivers": [
     {
       "id": "92d05738-9572-4d04-9549-044738734960",
-      "name": "WiMeter Cloud Bridge Driver",
-      "namespace": "user",
+      "name": "WiMeter Cloud Bridge",
+      "namespace": "aniva",
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy",
+      "required": true
+    },
+    {
+      "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+      "name": "WiMeter Child Device",
+      "namespace": "aniva",
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridgeChild.groovy",
       "required": true
     }
   ]

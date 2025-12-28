@@ -1,29 +1,47 @@
 /**
- * WiMeter Cloud Bridge (Single Location - Clean Raw Names)
- * v2.5 - Fixed A/C Handling (Concatenate slashes)
+ * WiMeter Cloud Bridge (Parent)
+ * v4.5 - Unit Suffixes & Clean States
  */
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "2.5") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.5") {
         capability "Refresh"
+        capability "Initialize"
         capability "Sensor"
         
-        attribute "lastUpdate", "string"
-        attribute "apiStatus", "string"
-        attribute "location", "string"
+        command "recreateChildDevices"
+        command "resetAllData" 
         
-        command "clearAllStates"
+        attribute "apiStatus", "string"
+        attribute "lastUpdate", "string"
+        attribute "location", "string"
+        attribute "_version", "string"
+        attribute "icon", "string"
+        attribute "html_icon", "string"
+        
+        // Parent Attributes (House) - updated with suffixes
+        attribute "location_power_real-time_kw", "number"
+        attribute "location_power_per_day_kwh", "number"
+        attribute "location_power_per_week_kwh", "number"
+        attribute "location_power_per_month_kwh", "number"
+        attribute "location_power_per_period_kwh", "number"
+        
+        attribute "location_cost_real-time_\$", "number"
+        attribute "location_cost_per_day_\$", "number"
+        attribute "location_cost_per_week_\$", "number"
+        attribute "location_cost_per_month_\$", "number"
+        attribute "location_cost_per_period_\$", "number"
     }
     
     preferences {
         input "apiUrl", "text", title: "WiMeter API URL", required: true
-        input "targetLocation", "text", title: "Target Location Name", required: true, description: "e.g. Andrei's House"
+        input "targetLocation", "text", title: "Target Location Name", required: true, description: "this is content of location attribute, e.g. Andrei's House"
         input "pollInterval", "enum", title: "Polling Interval", options: ["Manual", "1 Minute", "5 Minutes", "15 Minutes", "30 Minutes"], defaultValue: "5 Minutes"
         input "debugMode", "bool", title: "Enable Debug Logging", defaultValue: false
     }
 }
 
-def driverVersion() { return "2.5" }
+def driverVersion() { return "4.5" }
 
 def installed() { initialize() }
 
@@ -33,128 +51,160 @@ def updated() {
 }
 
 def initialize() {
+    sendEvent(name: "_version", value: driverVersion())
     unschedule()
     switch(pollInterval) {
         case "1 Minute": runEvery1Minute(refresh); break
         case "5 Minutes": runEvery5Minutes(refresh); break
         case "15 Minutes": runEvery15Minutes(refresh); break
         case "30 Minutes": runEvery30Minutes(refresh); break
+        case "Manual": break;
+        default: runEvery5Minutes(refresh); break
     }
 }
 
-def clearAllStates() {
-    log.warn "Clearing all current states..."
-    device.currentStates.each { 
-        device.deleteCurrentState(it.name) 
-    }
-    log.info "All states cleared."
+def resetAllData() {
+    log.warn "Resetting all data..."
+    // Note: We cannot easily "unset" an attribute in Hubitat without deleting the device,
+    // but we can set them to null or 0 if really needed. 
+    // For now, this just logs, as the user prefers "Clean" (hidden) states.
+    // The best way to "Clean" the UI is to use the "recreateChildDevices" command.
+}
+
+def recreateChildDevices() {
+    log.warn "Wiping and recreating child devices..."
+    getChildDevices().each { deleteChildDevice(it.deviceNetworkId) }
+    refresh()
 }
 
 def refresh() {
-    log.info "WiMeter Driver v${driverVersion()} | Refresh initiated at: ${new Date()}"
+    if (debugMode) log.debug "Refreshing v${driverVersion()}..."
 
     if (!apiUrl || !targetLocation) {
         logError "Missing API URL or Target Location."
         return
     }
     
-    if (debugMode) log.debug "Polling WiMeter API..."
-    
-    def params = [
-        uri: apiUrl,
-        contentType: 'application/json',
-        timeout: 10
-    ]
+    def params = [uri: apiUrl, contentType: 'application/json', timeout: 10]
 
     try {
         httpGet(params) { resp ->
-            if (resp.data && resp.data.ret == 1) {
+            if (resp.status == 200) {
                 sendEvent(name: "apiStatus", value: "Online")
                 sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
-                processLocationData(resp.data.devices)
+                processData(resp.data)
             } else {
-                logError "API returned error: ${resp.data}"
+                logError "API Error: ${resp.status}"
                 sendEvent(name: "apiStatus", value: "Error")
             }
         }
     } catch (e) {
-        logError "Failed to poll WiMeter: ${e.message}"
+        logError "Connection Failed: ${e.message}"
         sendEvent(name: "apiStatus", value: "Connection Failed")
     }
 }
 
-def processLocationData(devices) {
-    // Set Main Location
-    sendEvent(name: "location", value: targetLocation, isStateChange: true)
+def processData(data) {
+    def listToProcess = []
+    if (data instanceof List) {
+        listToProcess = data
+    } else if (data instanceof Map) {
+        if (data.containsKey("devices") && data.devices instanceof List) {
+             listToProcess = data.devices
+        } else if (data.containsKey("name")) {
+             listToProcess = [data]
+        } else {
+             listToProcess = data.values()
+        }
+    }
 
-    devices.each { item ->
-        // Filter by Location
-        if (item.location.trim() != targetLocation.trim()) return
+    def locationDevices = listToProcess.findAll { it.location && it.location.trim() == targetLocation.trim() }
+    def groupedDevices = locationDevices.groupBy { it.name }
 
-        // 1. Calculate Values
-        def result = calculateValue(item)
-        
-        // 2. Format Name
-        def nameStr = item.name.trim()
-        
-        // Remove 's (Specific request: "Andrei's" -> "Andrei")
-        nameStr = nameStr.replaceAll("'s", "")
-        nameStr = nameStr.replaceAll("'S", "")
-        
-        // NEW: Remove forward slashes so they concatenate ("A/C" -> "AC")
-        nameStr = nameStr.replaceAll("/", "")
+    groupedDevices.each { name, items ->
+        def cleanItems = items.collect { new HashMap(it) }
 
-        // Determine suffix (cost/kw/kwh)
-        def safeUnit = result.unit == "\$" ? "cost" : result.unit
-        
-        // Construct Raw Name: lower case, spaces to underscores, remove special chars
-        def rawName = "${nameStr}_${safeUnit}"
-                        .toLowerCase()
-                        .replaceAll("[^a-z0-9]", "_") // Replace non-alphanumeric with _
-                        .replaceAll("_+", "_")         // Remove duplicate underscores (e.g. __)
-                        .replaceAll("_+\$", "")        // Remove trailing underscores
-
-        // 3. Send Event (Only ONE event per metric to avoid duplicates)
-        if (debugMode) log.debug "Setting: '${rawName}' = ${result.value}"
-        
-        sendEvent(name: rawName, value: result.value, unit: result.unit, isStateChange: true)
+        if (name.trim() == targetLocation.trim()) {
+            updateParentState(cleanItems)
+        } else {
+            updateChildDevice(name, cleanItems)
+        }
     }
 }
 
-def calculateValue(item) {
+def updateParentState(items) {
+    sendEvent(name: "location", value: targetLocation)
+    
+    def firstItem = items.find { it.url }
+    if (firstItem) {
+        sendEvent(name: "icon", value: firstItem.url)
+        sendEvent(name: "html_icon", value: "<img src='${firstItem.url}' style='height:40px;'>")
+    }
+
+    items.each { item ->
+        def result = calculateValueAndSuffix(item) 
+        if (result.baseType) {
+            // Updated Naming Scheme with Suffix
+            def attrName = "location_${result.baseType}${result.suffix}${result.unitSuffix}"
+            sendEvent(name: attrName, value: result.value, unit: result.unit)
+        }
+    }
+}
+
+def updateChildDevice(name, items) {
+    def cleanName = name.replaceAll("'s", "").replaceAll("'S", "").replaceAll("/", "").trim()
+    def dni = "WIMETER_CHILD_${cleanName.replaceAll("[^a-zA-Z0-9]", "")}"
+    
+    def child = getChildDevice(dni)
+    if (!child) {
+        try {
+            addChildDevice("aniva", "WiMeter Child Device", dni, [name: name, isComponent: true])
+            child = getChildDevice(dni)
+        } catch (e) {
+            logError "Failed to create child '${name}'. Error: ${e}"
+            return
+        }
+    }
+    child.parseItems(items)
+}
+
+def calculateValueAndSuffix(item) {
     def rawVal = item.reading.toFloat()
+    def unit = item.unit ? item.unit.trim() : ""
+    def interval = (item.interval != null) ? item.interval.toInteger() : 0
+    def baseType = ""
     def val = 0.0
-    def unitStr = item.unit
-    
-    if (item.unit == "kW") {
-        val = rawVal.round(3) 
-        unitStr = "kW"
-    } 
-    else if (item.unit == "W") {
-        val = (rawVal / 1000).round(3) 
-        unitStr = "kW"
-    }
-    else if (item.unit == "Wh") {
-        val = (rawVal / 1000).round(3) 
-        unitStr = "kWh"
-    }
-    else if (item.unit == "kWh") {
-        val = rawVal.round(3)
-        unitStr = "kWh"
-    }
-    else if (item.unit == "\$") {
+    def unitSuffix = ""
+
+    if (unit == "\$" || unit == '$') {
+        baseType = "cost"
         val = rawVal.round(2)
-        unitStr = "\$"
+        unit = "\$"
+        unitSuffix = "_\$"
+    } else if (unit.contains("W") || unit.contains("kW") || unit.contains("Wh") || unit.contains("kWh")) {
+        baseType = "power"
+        if (unit == "W" || unit == "Wh") val = (rawVal / 1000).round(3)
+        else val = rawVal.round(3)
+        
+        // Determine if it is Energy (kWh) or Power (kW) based on interval/unit
+        // Logic: if Interval > 0 it is technically Energy (kWh), if 0 it is Power (kW)
+        if (interval == 0) {
+            unit = "kW"
+            unitSuffix = "_kw"
+        } else {
+            unit = "kWh"
+            unitSuffix = "_kwh"
+        }
     }
-    
-    return [value: val, unit: unitStr]
+
+    def suffix = "_per_period"
+    if (interval == 0) suffix = "_real-time"
+    else if (interval == 86400) suffix = "_per_day"
+    else if (interval == 604800) suffix = "_per_week"
+    else if (interval >= 2419200 && interval <= 2678400) suffix = "_per_month"
+
+    return [value: val, unit: unit, baseType: baseType, suffix: suffix, unitSuffix: unitSuffix]
 }
 
-def logsOff() {
-    device.updateSetting("debugMode", [value:"false", type:"bool"])
-    log.info "Debug logging disabled automatically."
-}
-
-def logError(msg) {
-    log.error msg
-}
+def logsOff() { device.updateSetting("debugMode", [value:"false", type:"bool"]) }
+def logError(msg) { log.error msg }
