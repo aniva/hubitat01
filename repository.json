@@ -12,7 +12,7 @@
         "Energy"
       ],
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/packageManifest.json",
-      "description": "Cloud Bridge for WiMeter Energy Monitoring solution"
+      "description": "Cloud Bridge Integration Driver for WiMeter Energy Monitoring solution"
     }
   ]
 }
