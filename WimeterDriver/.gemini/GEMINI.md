@@ -189,7 +189,7 @@ The `interval` field (seconds) determines the middle part of the attribute name:
 **Examples:**
 * `location_power_real-time_kw` (Parent Device)
 * `power_per_day_kwh` (Child Device)
-* `cost_per_week_dollars` (Child Device)
+* `cost_per_week_\$` (Child Device)
 
 ## 4. Technical Constraints & Fixes
 If modifying this driver, strictly adhere to these fixes established during v1.0 - v4.5 development:
