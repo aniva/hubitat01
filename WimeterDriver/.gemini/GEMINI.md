@@ -234,7 +234,8 @@ def cleanItems = items.collect { new HashMap(it) }
     * Calculates suffix and sends events.
 
 ## 6. Deployment (HPM)
-* **Manifest:** `packageManifest.json` must list **both** drivers.
+* **Status:** **Merged into Official HPM Repository.**
+* **Manifest:** `packageManifest.json` lists both drivers.
 * **Versioning:** Version numbers in the JSON manifest must match the `driverVersion()` in the Groovy code.
 
 ## 7. Future Roadmap / To-Do (v4.11+)
