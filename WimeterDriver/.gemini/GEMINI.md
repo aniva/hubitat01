@@ -252,6 +252,6 @@ def cleanItems = items.collect { new HashMap(it) }
     * **Issue:** Currently, child device tiles (green/red cards) hardcode the title as "POWER".
     * **Fix:** Pass the dynamic device name (e.g., "Boiler", "Washer") from the API response into the HTML generation logic so the tile says "BOILER PWR" instead of generic "POWER".
 
-4. **Driver configuration for power tile threshols"
+4. **Driver configuration for power tile threshols**
     * **Issue:** Currently kW thresholds for tile are hardcoded in the driveres, depending on the treshold tile changes colour, low power - grey, highest power red
     * **Fix** make thresholds configurable in driver properties for parent and child drivers, bonus, allow color selection there too 
