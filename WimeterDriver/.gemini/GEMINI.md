@@ -302,11 +302,7 @@ The tile uses "Nuclear CSS" (negative margins and `!important` tags) to remove s
     * **Issue:** Even with `capability "PowerMeter"`, child devices like "Boiler" or "Range" often display a generic `?` icon instead of a Lightning Bolt or Plug.
     * **Investigation:** Determine if Hubitat requires a specific "Device Type" definition or if the icon is cached at the platform level.
 
-3.  **Dynamic Titles for HTML Tiles**
-    * **Issue:** Currently, child device tiles hardcode the title as "POWER".
-    * **Fix:** Pass the dynamic device name (e.g., "Boiler", "Washer") from the API response into the HTML generation logic so the tile says "BOILER PWR" instead of generic "POWER".
-
-4.  **Configurable Power Tile Thresholds**
+3.  **Configurable Power Tile Thresholds**
     * **Issue:** kW thresholds for the tile color (Green/Yellow/Red) are currently hardcoded in the driver.
     * **Fix:** Add `Preferences` inputs to both Parent and Child drivers to allow users to define their own kW ranges for each color.
     * **Bonus:** Allow users to select the colors themselves via a color picker or enum list.
