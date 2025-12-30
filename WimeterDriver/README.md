@@ -11,6 +11,17 @@ It uses a **Parent-Child** architecture:
 * **Parent Device:** Represents the main location (e.g., "Andrei's House").
 * **Child Devices:** Automatically created for every appliance found in your WiMeter account (e.g., "Boiler", "A/C").
 
+### About WiMeter
+**WiMeter** is a smart, retrofit energy monitoring system designed for residential and commercial electrical panels. It installs directly into your breaker box to provide granular monitoring of up to **28 individual circuits**.
+
+Unlike simple smart plugs or utility meters, WiMeter offers:
+* **Real-time monitoring** of voltage, current, and power factor.
+* **Critical Systems Health Check:** Uses power profiling and temperature sensors to detect equipment malfunctions before failure.
+* **Immediate Insights:** No "learning period" required; data is available immediately after installation.
+* **Universal Compatibility:** Works with 1, 2, or 3-phase systems (100-600V).
+
+For more information, visit the official site: [https://www.wimeter.ai/](https://www.wimeter.ai/)
+
 ---
 
 ## 1. Installation (Hubitat Package Manager)
@@ -40,6 +51,8 @@ After installing the driver, open the **WiMeter Cloud Bridge** device page and s
 
 ## 3. Dashboard Setup: The "Live Status" Card
 This driver generates a pre-formatted, color-coded HTML tile (Green/Yellow/Red) that displays real-time power usage.
+
+![WiMeter Dashboard Example](images/dashboard_example.png)
 
 ### How to Add the Tile
 1.  Open your Hubitat **Dashboard**.
