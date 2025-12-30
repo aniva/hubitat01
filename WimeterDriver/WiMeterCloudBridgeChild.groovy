@@ -97,17 +97,19 @@ def parseItems(items) {
 
     def tileHtml = """
     <div style='
-        width: 120% !important; 
-        height: 120% !important;
-        margin-top: -10% !important;
-        margin-left: -10% !important;
+        width: 95% !important; 
+        height: 85% !important;
+        margin-top: 5% !important;
+        margin-left: 0% !important;
+		margin-right: -40% !important;
+        margin-bottom: 15% !important;
         background-color: ${cardColor}; 
         color: white;
         display: flex; 
         flex-direction: column; 
         align-items: center; 
         justify-content: center;
-        border-radius: 15px;
+        border-radius: 5px;
     '>
         <div style='font-size:0.8rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>Power</div>
         <div style='font-size:1.5rem; font-weight:bold; line-height:1.1;'>${powerVal} <span style='font-size:0.6em'>kW</span></div>
