@@ -205,7 +205,7 @@ def updateParentState(items) {
         justify-content: center;
         border-radius: 5px;
     '>
-        <div style='font-size:0.8rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>House Pwr</div>
+        <div style='font-size:0.8rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>Power</div>
         <div style='font-size:1.5rem; font-weight:bold; line-height:1.1;'>${powerVal} <span style='font-size:0.6em'>kW</span></div>
     </div>
     """
