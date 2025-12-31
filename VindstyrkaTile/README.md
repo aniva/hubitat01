@@ -13,14 +13,14 @@ The VINDSTYRKA is a smart air quality monitor that tracks **PM2.5**, **tVOC**, *
 
 ## Architecture
 This solution uses a "Proxy" driver approach:
-*   **Physical Device:** The IKEA VINDSTYRKA sensor. Recommended driver: [Dan Danache's IKEA Zigbee Drivers](https://community.hubitat.com/t/release-ikea-zigbee-drivers/123853/537) ([Source](https://codeberg.org/dan-danache/hubitat)).
-*   **Virtual Driver (`AirQualityTile.groovy`):** Receives data, calculates trends, and generates the `html_tile` attribute.
-*   **Rule Machine:** Acts as the "Brain" to filter triggers and update the virtual driver.
+* **Physical Device:** The IKEA VINDSTYRKA sensor. Recommended driver: [Dan Danache's IKEA Zigbee Drivers](https://community.hubitat.com/t/release-ikea-zigbee-drivers/123853/537) ([Source](https://codeberg.org/dan-danache/hubitat)).
+* **Virtual Driver (`AirQualityTile.groovy`):** Receives data, calculates trends, and generates the `html_tile` attribute.
+* **Rule Machine:** Acts as the "Brain" to filter triggers and update the virtual driver.
 
 ## Installation
 
 ### Option 1: Hubitat Package Manager (HPM)
-*   *Coming Soon:* This package will be available in the repository as "Vindstyrka Air Quality Tile".
+* *Coming Soon:* This package will be available in the repository as "Vindstyrka Air Quality Tile".
 
 ### Option 2: Manual Install
 1.  Open **Drivers Code** in your Hubitat interface.
@@ -37,12 +37,49 @@ This solution uses a "Proxy" driver approach:
 4.  **Type:** Select `Vindstyrka Air Quality Tile` (Namespace: `aniva`).
 5.  Save Device.
 
-### 2. Connect via Rule Machine
-Create a rule to push data from the physical sensor to the tile:
-*   **Trigger:** `PM2.5` or `VOC Index` *changed* on the physical IKEA device.
-*   **Action:** Run Custom Action on the Virtual Device:
-    *   Command: `updateAirQuality`
-    *   Parameters: `current PM2.5`, `current VOC`
+### 2. Connect via Rule Machine (The "Variable Bridge")
+Hubitat Rule Machine **cannot** directly pass device attributes (like PM2.5) into custom commands. You must use Local Variables as a bridge.
+
+**Step A: Define Local Variables**
+1.  Create a New Rule (e.g., "Sync Air Quality Tile").
+2.  Click **Local Variables**.
+3.  Create `current_pm25` (Type: **Decimal**, Value: 0).
+4.  Create `current_voc` (Type: **Decimal**, Value: 0).
+
+**Step B: Select Triggers**
+1.  Select **Trigger Events**.
+2.  Capability: `Custom Attribute` -> Device: **Physical IKEA Sensor** -> Attribute: `Pm25` -> *changed*.
+3.  Capability: `Custom Attribute` -> Device: **Physical IKEA Sensor** -> Attribute: `VocIndex` -> *changed*.
+
+**Step C: Configure Actions (The Bridge Logic)**
+You must set the variables *before* running the command.
+
+1.  **Action 1: Capture PM2.5**
+    * Select Action: **Set Variable**.
+    * Select Variable to Set: **`current_pm25`**.
+    * *Note: The "Operation" dropdown will appear ONLY after you select the variable name.*
+    * Operation: **Device Attribute**.
+    * Select Device: **Physical IKEA Sensor**.
+    * Select Attribute: **`Pm25`**.
+
+2.  **Action 2: Capture VOC**
+    * Repeat the steps above for **`current_voc`** mapping to attribute **`VocIndex`**.
+
+3.  **Action 3: Update the Tile**
+    * Select Action: **Run Custom Action**.
+    * Select Capability: **Actuator**.
+    * Select Device: **Virtual Tile Device** (e.g., "Living Room Air Tile").
+    * Select Command: **`updateAirQuality`**.
+    * **Parameter 1:**
+        * Type: **Decimal**.
+        * Click the **"Use Variable"** toggle/checkbox.
+        * Select: **`current_pm25`**.
+    * **Parameter 2:**
+        * Type: **Decimal**.
+        * Click the **"Use Variable"** toggle/checkbox.
+        * Select: **`current_voc`**.
+
+4.  Click **Done** to save the rule.
 
 ## Dashboard Configuration
 1.  Add a tile to your Hubitat Dashboard.
@@ -52,9 +89,9 @@ Create a rule to push data from the physical sensor to the tile:
 
 ## Thresholds
 The tile uses the following logic for visual status (Draft):
-*   **PM2.5:** > 25 (Poor)
-*   **VOC Index:** > 250 (Poor)
+* **PM2.5:** > 25 (Poor)
+* **VOC Index:** > 250 (Poor)
 
 ## Credits
-*   **Author:** Aniva
-*   **Platform:** Hubitat Elevation
+* **Author:** Aniva
+* **Platform:** Hubitat Elevation

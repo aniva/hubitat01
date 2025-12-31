@@ -1,17 +1,16 @@
 {
   "packageName": "Vindstyrka Air Quality Tile",
   "author": "Aniva",
-  "version": "1.0.0",
-  "minimumHEVersion": "2.3.0",
-  "dateReleased": "2025-12-31",
-  "releaseNotes": "Initial release of the Vindstyrka Air Quality Tile driver.",
+  "date": "2025-12-31",
+  "version": "1.6",
   "drivers": [
     {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "id": "vindstyrka-tile-driver",
       "name": "Vindstyrka Air Quality Tile",
       "namespace": "aniva",
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/VindstyrkaTile/AirQualityTile.groovy",
       "required": true
     }
-  ]
+  ],
+  "releaseNotes": "v1.6 - Initial Release. Includes Linear Regression trends (30m window) and color-coded dashboard tile."
 }
