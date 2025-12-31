@@ -16,12 +16,12 @@ The system follows a "Bridge" pattern to separate the physical device (Zigbee) f
 ```mermaid
 graph TD
     %% Nodes
-    Device[IKEA VINDSTYRKA<br/>(Physical Sensor)]
-    Hub[Hubitat Elevation<br/>(C-8 Pro)]
-    PhyDriver[Dan Danache Driver<br/>(IKEA Zigbee Driver)]
-    RuleEng[Rule Machine<br/>(Logic Bridge)]
-    VirtDriver[Vindstyrka Tile v2.3<br/>(Virtual Driver)]
-    Dashboard[Hubitat Dashboard<br/>(User UI)]
+    Device["IKEA VINDSTYRKA<br/>(Physical Sensor)"]
+    Hub["Hubitat Elevation<br/>(C-8 Pro)"]
+    PhyDriver["Dan Danache Driver<br/>(IKEA Zigbee Driver)"]
+    RuleEng["Rule Machine<br/>(Logic Bridge)"]
+    VirtDriver["Vindstyrka Tile v2.3<br/>(Virtual Driver)"]
+    Dashboard["Hubitat Dashboard<br/>(User UI)"]
 
     %% Styles
     style Device fill:#f9f9f9,stroke:#333,stroke-width:2px
