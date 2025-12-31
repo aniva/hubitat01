@@ -13,6 +13,16 @@
       ],
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/packageManifest.json",
       "description": "Cloud Bridge Integration Driver for WiMeter Energy Monitoring solution"
+    },
+    {
+      "name": "Vindstyrka Air Quality Tile",
+      "category": "Integrations",
+      "tags": [
+        "Air Quality",
+        "Dashboard"
+      ],
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/VindstyrkaTile/packageManifest.json",
+      "description": "Visual Dashboard Tile and Logic Proxy for IKEA VINDSTYRKA sensors"
     }
   ]
 }
