@@ -1,15 +1,17 @@
 /**
  * Vindstyrka Air Quality Tile
- * v1.6 - WiMeter Style & Refined Thresholds
+ * v2.3 - Custom Thresholds & Unified Status Table
  */
 metadata {
     definition (name: "Vindstyrka Air Quality Tile", namespace: "aniva", author: "Aniva") {
         capability "Sensor"
         capability "Actuator"
         capability "Initialize"
+        capability "Refresh"
 
         attribute "_version", "string"
-        attribute "html_tile", "string"
+        attribute "html_tile", "string"       // For Dashboard
+        attribute "status_table", "string"    // For Driver Page (Live + Legend)
         attribute "pm25", "number"
         attribute "voc", "number"
         attribute "trend", "string"
@@ -21,18 +23,31 @@ metadata {
     }
 
     preferences {
-        input name: "trendWindow", type: "number", title: "Trend Window (Minutes)", description: "Analyze the slope of the last N minutes.", defaultValue: 30, range: "5..360"
+        section("<b>Threshold Configuration</b>") {
+            input name: "limitPmFair", type: "number", title: "PM2.5 'Fair' Limit", description: "Above this is Fair (Default: 15)", defaultValue: 15
+            input name: "limitPmPoor", type: "number", title: "PM2.5 'Poor' Limit", description: "Above this is Poor (Default: 35)", defaultValue: 35
+            
+            input name: "limitVocFair", type: "number", title: "VOC 'Fair' Limit", description: "Above this is Fair (Default: 150)", defaultValue: 150
+            input name: "limitVocPoor", type: "number", title: "VOC 'Poor' Limit", description: "Above this is Poor (Default: 300)", defaultValue: 300
+        }
+        
+        section("<b>Trend Logic</b>") {
+            input name: "trendWindow", type: "number", title: "Trend Window (Minutes)", description: "Analyze the slope of the last N minutes.", defaultValue: 30, range: "5..360"
+        }
+        
         input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: true
     }
 }
 
-def driverVersion() { return "1.6" }
+def driverVersion() { return "2.3" }
 
 def installed() { initialize() }
 
 def updated() { 
     initialize() 
     pruneHistory()
+    // Trigger a refresh so the table updates with new threshold numbers immediately
+    refresh()
 }
 
 def initialize() {
@@ -41,7 +56,21 @@ def initialize() {
     log.info "Vindstyrka Tile driver initialized (v${driverVersion()})"
 }
 
-def reload() { initialize() }
+def reload() { 
+    log.info "Reloading driver logic..."
+    refresh()
+}
+
+def refresh() {
+    BigDecimal lastPm25 = device.currentValue("pm25")
+    BigDecimal lastVoc = device.currentValue("voc")
+    
+    // Even if no data exists, we want to draw the table (with empty values) so the Legend appears
+    if (lastPm25 == null) lastPm25 = 0
+    if (lastVoc == null) lastVoc = 0
+    
+    updateAirQuality(lastPm25, lastVoc)
+}
 
 def clearHistory() {
     state.history = []
@@ -51,9 +80,15 @@ def clearHistory() {
 void updateAirQuality(BigDecimal pm25, BigDecimal voc) {
     long now = new Date().getTime()
     
-    // 1. Add History
+    // 1. History Management
     if (state.history == null) state.history = []
-    state.history.add([t: now, p: pm25, v: voc])
+    
+    def lastEntry = state.history ? state.history.last() : null
+    boolean isDuplicate = lastEntry && (lastEntry.p == pm25) && (lastEntry.v == voc)
+    
+    if (!isDuplicate) {
+        state.history.add([t: now, p: pm25, v: voc])
+    }
     
     // 2. Prune
     pruneHistory()
@@ -61,7 +96,7 @@ void updateAirQuality(BigDecimal pm25, BigDecimal voc) {
     // 3. Calculate Trend
     String trend = calculateSlopeTrend(now)
     
-    // 4. Update Attributes & Determine Color State
+    // 4. Update Attributes
     String stateStr = determineState(pm25, voc)
     
     sendEvent(name: "pm25", value: pm25)
@@ -71,9 +106,13 @@ void updateAirQuality(BigDecimal pm25, BigDecimal voc) {
     
     if (logEnable) log.debug "Update v${driverVersion()}: PM=${pm25}, VOC=${voc}, Trend=${trend}"
     
-    // 5. Generate Tile (WiMeter Style)
+    // 5. Generate Visuals
     String tileHtml = generateHtml(pm25, voc, trend, stateStr)
     sendEvent(name: "html_tile", value: tileHtml)
+    
+    // Generate the Unified Table (Live + Legend)
+    String statusTable = generateUnifiedTable(pm25, voc, stateStr)
+    sendEvent(name: "status_table", value: statusTable)
 }
 
 void pruneHistory() {
@@ -129,13 +168,14 @@ double getSlope(List data, String key) {
 }
 
 String determineState(BigDecimal pm25, BigDecimal voc) {
-    // WHO Guidelines (Approx 24h mean) & Sensirion Index
-    // Green: PM < 15, VOC < 150
-    // Yellow: PM < 35, VOC < 300
-    // Red: Anything higher
-    
-    if (pm25 > 35 || voc > 300) return "poor"
-    if (pm25 > 15 || voc > 150) return "fair"
+    // Retrieve custom limits or use defaults
+    def pPoor = limitPmPoor ?: 35
+    def pFair = limitPmFair ?: 15
+    def vPoor = limitVocPoor ?: 300
+    def vFair = limitVocFair ?: 150
+
+    if (pm25 > pPoor || voc > vPoor) return "poor"
+    if (pm25 > pFair || voc > vFair) return "fair"
     return "good"
 }
 
@@ -148,7 +188,6 @@ String generateHtml(BigDecimal pm25, BigDecimal voc, String trend, String state)
     if (trend == "up") arrow = "&nearr;"
     if (trend == "down") arrow = "&searr;"
     
-    // WiMeter CSS Style
     return """
     <div style='
         width: 95% !important; 
@@ -171,5 +210,56 @@ String generateHtml(BigDecimal pm25, BigDecimal voc, String trend, String state)
             ${pm25} | ${voc} <span style='font-size:0.8em'>${arrow}</span>
         </div>
     </div>
+    """
+}
+
+// Generates the Unified Table (Live Data + Dynamic Legend)
+String generateUnifiedTable(BigDecimal pm25, BigDecimal voc, String state) {
+    // Get Thresholds for display
+    def pPoor = limitPmPoor ?: 35
+    def pFair = limitPmFair ?: 15
+    def vPoor = limitVocPoor ?: 300
+    def vFair = limitVocFair ?: 150
+    
+    // Live Row Color
+    def stateColor = "#7f8c8d"
+    if (state == "good") stateColor = "#27ae60"
+    if (state == "fair") stateColor = "#f1c40f"
+    if (state == "poor") stateColor = "#c0392b"
+
+    return """
+    <table style='width:350px; font-size:12px; border-collapse:collapse; text-align:center; border:1px solid #ddd; font-family:Arial,sans-serif;'>
+        <tr style='background-color:#f4f4f4; border-bottom:1px solid #ccc;'>
+            <th style='padding:6px; text-align:left;'>STATUS</th>
+            <th style='padding:6px;'>PM2.5</th>
+            <th style='padding:6px;'>VOC</th>
+        </tr>
+        
+        <tr style='background-color:#fff; font-weight:bold; border-bottom:2px solid #aaa;'>
+            <td style='padding:8px; text-align:left; color:${stateColor}; font-size:1.1em;'>● ${state.toUpperCase()}</td>
+            <td style='padding:8px; font-size:1.1em;'>${pm25}</td>
+            <td style='padding:8px; font-size:1.1em;'>${voc}</td>
+        </tr>
+
+        <tr style='background-color:#fafafa; font-size:10px; color:#666;'>
+            <td colspan='3' style='padding:4px; border-top:1px solid #eee;'><i>Reference Thresholds</i></td>
+        </tr>
+
+        <tr style='color:#666;'>
+            <td style='padding:4px; text-align:left;'><span style='color:#27ae60;'>■</span> Good</td>
+            <td>0 - ${pFair}</td>
+            <td>0 - ${vFair}</td>
+        </tr>
+        <tr style='color:#666;'>
+            <td style='padding:4px; text-align:left;'><span style='color:#f1c40f;'>■</span> Fair</td>
+            <td>${pFair} - ${pPoor}</td>
+            <td>${vFair} - ${vPoor}</td>
+        </tr>
+        <tr style='color:#666;'>
+            <td style='padding:4px; text-align:left;'><span style='color:#c0392b;'>■</span> Poor</td>
+            <td>&gt; ${pPoor}</td>
+            <td>&gt; ${vPoor}</td>
+        </tr>
+    </table>
     """
 }

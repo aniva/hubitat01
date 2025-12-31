@@ -1,26 +1,61 @@
 # IKEA VINDSTYRKA Air Quality Tile
 
-**Status:** In Development (v0.1)
+**Status:** Stable (v2.3)
 
 ## Overview
 This project enhances the [IKEA VINDSTYRKA](https://www.ikea.com/us/en/p/vindstyrka-air-quality-sensor-smart-60498233/) Zigbee Air Quality Sensor integration for Hubitat Elevation.
-The VINDSTYRKA is a smart air quality monitor that tracks **PM2.5**, **tVOC**, **Temperature**, and **Humidity**. While the sensor pairs natively, this project adds a visual layer and logic to handle data noise.
 
-**Key Goals:**
-1.  **Visual Dashboard Tile:** A custom HTML tile displaying PM2.5 and VOC levels with health status colors (Green/Yellow/Red).
-2.  **Trend Indicators:** Visual arrows (↗ ↘) showing the direction of air quality change.
-3.  **Spike Smoothing:** Logic to differentiate between transient spikes (e.g., lighting a match) and sustained poor air quality.
+The VINDSTYRKA is a smart air quality monitor that tracks **PM2.5**, **tVOC**, **Temperature**, and **Humidity**. While the sensor pairs natively, this project adds a visual dashboard layer and advanced logic to filter noise.
+
+![Dashboard Tile Example](images/dashboard_example.png)
 
 ## Architecture
-This solution uses a "Proxy" driver approach:
-* **Physical Device:** The IKEA VINDSTYRKA sensor. Recommended driver: [Dan Danache's IKEA Zigbee Drivers](https://community.hubitat.com/t/release-ikea-zigbee-drivers/123853/537) ([Source](https://codeberg.org/dan-danache/hubitat)).
-* **Virtual Driver (`AirQualityTile.groovy`):** Receives data, calculates trends, and generates the `html_tile` attribute.
-* **Rule Machine:** Acts as the "Brain" to filter triggers and update the virtual driver.
+
+The system follows a "Bridge" pattern to separate the physical device (Zigbee) from the logic and presentation layer (Virtual Driver).
+
+```mermaid
+graph TD
+    %% Nodes
+    Device[IKEA VINDSTYRKA<br/>(Physical Sensor)]
+    Hub[Hubitat Elevation<br/>(C-8 Pro)]
+    PhyDriver[Dan Danache Driver<br/>(IKEA Zigbee Driver)]
+    RuleEng[Rule Machine<br/>(Logic Bridge)]
+    VirtDriver[Vindstyrka Tile v2.3<br/>(Virtual Driver)]
+    Dashboard[Hubitat Dashboard<br/>(User UI)]
+
+    %% Styles
+    style Device fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style Hub fill:#d4efdf,stroke:#27ae60,stroke-width:2px
+    style VirtDriver fill:#d6eaf8,stroke:#3498db,stroke-width:2px
+
+    %% Flow
+    Device -->|Zigbee 3.0| Hub
+    Hub -->|Raw Attributes| PhyDriver
+    PhyDriver -->|Events: PM2.5 / VOC| RuleEng
+    RuleEng -->|Command: updateAirQuality| VirtDriver
+    VirtDriver -->|Attribute: html_tile| Dashboard
+```
+
+**Flow Description:**
+1.  **IKEA VINDSTYRKA:** Sends raw data to the hub via Zigbee.
+2.  **Dan Danache Driver:** Parses the Zigbee messages into device events.
+3.  **Rule Machine:** Detects the changes, captures the values into variables, and "bridges" them to the virtual device.
+4.  **Vindstyrka Tile (This Driver):** Receives the clean data, calculates trends (Linear Regression), determines health state (WHO Thresholds), and generates the HTML.
+5.  **Dashboard:** simply displays the pre-rendered HTML tile.
+
+## Key Features
+1.  **Visual Dashboard Tile:** A minimalist "Nuclear" style CSS tile showing PM2.5 and VOC levels.
+2.  **Smart Trends:** Uses **Linear Regression (Slope Analysis)** to show trend direction (↗ ↘) based on a configurable time window, filtering out transient spikes.
+3.  **Configurable Thresholds:** Users can customize "Good", "Fair", and "Poor" limits based on WHO guidelines or personal preference.
+4.  **Unified Status View:** The driver page includes a "Crash-Proof" live table showing current readings alongside your defined threshold legend.
+    
+    ![Driver States Example](images/driver_states_example.png)
 
 ## Installation
 
 ### Option 1: Hubitat Package Manager (HPM)
-* *Coming Soon:* This package will be available in the repository as "Vindstyrka Air Quality Tile".
+* Add the repository URL: `https://raw.githubusercontent.com/aniva/hubitat01/master/repository.json`
+* Search for and install **"Vindstyrka Air Quality Tile"**.
 
 ### Option 2: Manual Install
 1.  Open **Drivers Code** in your Hubitat interface.
@@ -28,7 +63,7 @@ This solution uses a "Proxy" driver approach:
 3.  Paste the code from `AirQualityTile.groovy`.
 4.  Save.
 
-## Setup & Usage
+## Setup & Configuration
 
 ### 1. Create the Virtual Device
 1.  Go to **Devices** -> **Add Device**.
@@ -37,8 +72,17 @@ This solution uses a "Proxy" driver approach:
 4.  **Type:** Select `Vindstyrka Air Quality Tile` (Namespace: `aniva`).
 5.  Save Device.
 
-### 2. Connect via Rule Machine (The "Variable Bridge")
+### 2. Configure Preferences
+Open the newly created Virtual Device and set your preferences:
+* **Trend Window (Minutes):** How far back to analyze data for the trend arrow (Default: 30 mins).
+* **Thresholds:** Set your specific limits for "Fair" and "Poor" air quality.
+    * *Default PM2.5:* Fair > 15, Poor > 35 (Based on WHO 24h Mean).
+    * *Default VOC:* Fair > 150, Poor > 300 (Based on Sensirion Index).
+
+### 3. Connect via Rule Machine (The "Variable Bridge")
 Hubitat Rule Machine **cannot** directly pass device attributes (like PM2.5) into custom commands. You must use Local Variables as a bridge.
+
+![Rule Engine Example](images/rule_engine_example.png)
 
 **Step A: Define Local Variables**
 1.  Create a New Rule (e.g., "Sync Air Quality Tile").
@@ -70,27 +114,16 @@ You must set the variables *before* running the command.
     * Select Capability: **Actuator**.
     * Select Device: **Virtual Tile Device** (e.g., "Living Room Air Tile").
     * Select Command: **`updateAirQuality`**.
-    * **Parameter 1:**
-        * Type: **Decimal**.
-        * Click the **"Use Variable"** toggle/checkbox.
-        * Select: **`current_pm25`**.
-    * **Parameter 2:**
-        * Type: **Decimal**.
-        * Click the **"Use Variable"** toggle/checkbox.
-        * Select: **`current_voc`**.
+    * **Parameter 1:** Type: **Decimal** -> Click **"Use Variable"** -> Select **`current_pm25`**.
+    * **Parameter 2:** Type: **Decimal** -> Click **"Use Variable"** -> Select **`current_voc`**.
 
 4.  Click **Done** to save the rule.
 
 ## Dashboard Configuration
 1.  Add a tile to your Hubitat Dashboard.
-2.  Select the Virtual Device created above.
-3.  Select the `Attribute` template.
+2.  Select the **Virtual Device** created above.
+3.  Select the **Attribute** template.
 4.  Choose the `html_tile` attribute.
-
-## Thresholds
-The tile uses the following logic for visual status (Draft):
-* **PM2.5:** > 25 (Poor)
-* **VOC Index:** > 250 (Poor)
 
 ## Credits
 * **Author:** Aniva
