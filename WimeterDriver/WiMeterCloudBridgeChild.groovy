@@ -1,11 +1,9 @@
 /**
  * WiMeter Child Device
  *
- * v4.11 - Refactored state variables to standard camelCase (e.g., powerRealTimeKw).
- * v4.10 - Fixed 'html_tile' metadata and stabilized power calculation.
- * v4.9 - Added standard 'PowerMeter' & 'EnergyMeter' capabilities.
- * v4.8 - Implemented "Safe Mode" HTML tile generation via 'apiStatus'.
- * v4.7 - Added 'power' attribute bridge to mirror real-time usage.
+ * v4.15 - Added 'powerLevel' attribute (High/Medium/Active/Idle).
+ * v4.14 - Added "Visual CSS" labels to Preferences.
+ * v4.13 - Removed color selectors. Updated defaults (0.4/1/2 kW).
  */
 
 metadata {
@@ -18,10 +16,11 @@ metadata {
 
         attribute "_version", "string"
         attribute "icon", "string"
-        attribute "htmlIcon", "string" // CamelCase
+        attribute "htmlIcon", "string"
+        attribute "htmlTile", "string"
         
-        // NEW: Officially defined
-        attribute "htmlTile", "string" // CamelCase
+        // NEW: Semantic State
+        attribute "powerLevel", "string"
 
         attribute "powerRealTimeKw", "number"
         attribute "powerRealTimeW", "number"
@@ -38,9 +37,18 @@ metadata {
         attribute "costPerMonth", "number"
         attribute "costPerPeriod", "number"
     }
+    
+    preferences {
+        // TILE CONFIGURATION (Visual CSS Labels)
+        input "headerTile", "text", title: "<b>Dashboard Tile Thresholds</b>", description: "Set the power levels (kW) that trigger status color changes.", displayDuringSetup: false, type: "paragraph", element: "paragraph"
+        
+        input "threshHigh", "decimal", title: "High Power <span style='background-color:#c0392b; color:white; padding:1px 4px; border-radius:3px; font-weight:bold; font-size:0.9em;'>RED</span> [kW]", defaultValue: 2.0, required: true
+        input "threshMed", "decimal", title: "Medium Power <span style='background-color:#f1c40f; color:white; padding:1px 4px; border-radius:3px; font-weight:bold; font-size:0.9em; text-shadow: 0px 0px 2px black;'>YELLOW</span> [kW]", defaultValue: 1.0, required: true
+        input "threshActive", "decimal", title: "Active Power <span style='background-color:#27ae60; color:white; padding:1px 4px; border-radius:3px; font-weight:bold; font-size:0.9em;'>GREEN</span> [kW]", defaultValue: 0.4, required: true
+    }
 }
 
-def driverVersion() { return "4.11" }
+def driverVersion() { return "4.15" }
 
 def installed() { initialize() }
 
@@ -65,11 +73,8 @@ def parseItems(items) {
         def results = calculateValueAndSuffix(item)
         results.each { res ->
             if (res.baseType) {
-                // Construct CamelCase Attribute Name: BaseType + Suffix + UnitSuffix
-                // e.g., power + RealTime + Kw -> powerRealTimeKw
                 def attrName = "${res.baseType}${res.suffix}${res.unitSuffix}"
                 sendEvent(name: attrName, value: res.value, unit: res.unit)
-                
                 if (attrName == "powerRealTimeKw") {
                       sendEvent(name: "power", value: res.value, unit: "kW")
                 }
@@ -77,7 +82,7 @@ def parseItems(items) {
         }
     }
     
-    // --- HTML TILE GENERATION ---
+    // --- HTML TILE GENERATION & POWER LEVEL ---
     def powerVal = 0.0
     try {
         def powerItem = items.find { it.unit == "kW" || it.unit == "W" }
@@ -93,10 +98,36 @@ def parseItems(items) {
         powerVal = 0.0
     }
 
-    def cardColor = "#7f8c8d"
-    if (powerVal >= 6.0) cardColor = "#c0392b"
-    else if (powerVal >= 3.0) cardColor = "#f1c40f"
-    else if (powerVal >= 1.0) cardColor = "#27ae60"
+    // Threshold Logic (Defaults: 0.4, 1.0, 2.0)
+    def tHigh = settings.threshHigh != null ? settings.threshHigh.toBigDecimal() : 2.0
+    def tMed = settings.threshMed != null ? settings.threshMed.toBigDecimal() : 1.0
+    def tActive = settings.threshActive != null ? settings.threshActive.toBigDecimal() : 0.4
+    
+    // Hardcoded Colors
+    def cRed = "#c0392b"
+    def cYellow = "#f1c40f"
+    def cGreen = "#27ae60"
+    def cGrey = "#7f8c8d"
+
+    def cardColor = cGrey
+    def levelText = "Idle"
+    
+    if (powerVal >= tHigh) {
+        cardColor = cRed
+        levelText = "High"
+    } else if (powerVal >= tMed) {
+        cardColor = cYellow
+        levelText = "Medium"
+    } else if (powerVal >= tActive) {
+        cardColor = cGreen
+        levelText = "Active"
+    } else {
+        cardColor = cGrey
+        levelText = "Idle"
+    }
+    
+    // Send the Power Level Event
+    sendEvent(name: "powerLevel", value: levelText)
 
     def tileHtml = """
     <div style='
@@ -126,7 +157,6 @@ def parseItems(items) {
     }
 }
 
-// Logic duplicated for Child context (identical to parent now)
 def calculateValueAndSuffix(item) {
     def rawVal = item.reading.toFloat()
     def rawUnit = item.unit ? item.unit.trim() : ""
@@ -160,9 +190,4 @@ def calculateValueAndSuffix(item) {
         }
     }
     return results
-}
-
-def getIntervalSuffix(interval) {
-    // Deprecated in favor of closure above, but kept if other legacy methods call it
-    // Not used in new logic.
 }

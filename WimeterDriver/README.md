@@ -1,6 +1,6 @@
 # WiMeter Cloud Bridge for Hubitat
 
-**Version:** v4.10
+**Version:** v4.15
 **Author:** Andrei Ivanov (aniva)
 **License:** Open Source
 
@@ -21,6 +21,20 @@ Unlike simple smart plugs or utility meters, WiMeter offers:
 * **Universal Compatibility:** Works with 1, 2, or 3-phase systems (100-600V).
 
 For more information, visit the official site: [https://www.wimeter.ai/](https://www.wimeter.ai/)
+
+### Architecture
+The integration bridges your physical home wiring data to your Hubitat hub via the WiMeter Cloud API.
+
+```mermaid
+graph LR
+    A[Home Wiring] <-->|Sensors| B(Physical WiMeter Device)
+    B -->|Uploads Data| C{WiMeter Cloud Services}
+    D[Hubitat Driver] -- GET API Call --> C
+    D -->|Updates| E[Parent Device]
+    D -->|Updates| F[Child Devices]
+    E --> G[Hubitat Dashboards]
+    F --> G
+```
 
 ---
 
@@ -54,6 +68,16 @@ This driver generates a pre-formatted, color-coded HTML tile (Green/Yellow/Red) 
 
 ![WiMeter Dashboard Example](images/dashboard_example.png)
 
+### Color Thresholds & Configuration
+You can customize the specific **kW thresholds** that trigger each color in the device **Preferences**. This allows you to differentiate between "Idle" states and "High Load" states.
+
+* **Idle (Grey):** Device is off or standby (Below "Active" threshold).
+* <span style="color:#27ae60">**Low/Active (Green):**</span> Normal operation (Below "Medium" threshold).
+* <span style="color:#f1c40f">**Medium (Yellow):**</span> Moderate loads (Below "High" threshold).
+* <span style="color:#c0392b">**High (Red):**</span> Heavy loads (Above "High" threshold).
+
+![Preferences Example](images/preferences_example.png)
+
 ### How to Add the Tile
 1.  Open your Hubitat **Dashboard**.
 2.  Click **Add Tile (+)**.
@@ -64,7 +88,20 @@ This driver generates a pre-formatted, color-coded HTML tile (Green/Yellow/Red) 
 
 ---
 
-## 4. Optional: Bridging to a "Virtual Omni Sensor"
+## 4. Custom Icons (Important)
+**Issue:** By default, Hubitat assigns a generic **`?`** icon to devices that are purely Power Meters (not switches).
+**Solution:** You can manually assign the correct "Lightning Bolt" icon using the platform's built-in icon selector.
+
+1.  Open the **Device Detail** page for your WiMeter device.
+2.  Click the **`?`** icon next to the device name at the top.
+3.  In the popup, filter for **"flash"** or **"bolt"**.
+4.  Select the desired icon and click **Save**.
+
+![Custom Icon Example](images/custom_icon_example.png)
+
+---
+
+## 5. Optional: Bridging to a "Virtual Omni Sensor"
 If you prefer to use standard Hubitat "Power Meter" tiles or integrate with other apps (like HomeKit bridges), you can sync the data to a standard **Virtual Omni Sensor**.
 
 ### Step 1: Create the Virtual Device
@@ -75,7 +112,13 @@ If you prefer to use standard Hubitat "Power Meter" tiles or integrate with othe
 
 ### Step 2: Create the Sync Rule (Rule Machine)
 1.  Open **Rule Machine** -> **Create New Rule**.
-2.  **Trigger:** Capability `Custom Attribute` -> Device `WiMeter Cloud Bridge` -> Attribute `location_power_real-time_w` -> `*changed*`.
+2.  **Trigger:** Capability `Custom Attribute` -> Device `WiMeter Cloud Bridge` -> Attribute `locationPowerRealTimeW` -> `*changed*`.
 3.  **Action:** Run Custom Action -> Capability `Sensor` -> Device "House Power Bridge" -> Command **`setPower`**.
 4.  **Parameter:** Type `Decimal` -> Value `%value%`.
 5.  Click **Done**.
+
+---
+
+## ❤️ Support
+If you find this driver useful, you can support the development here:
+[PayPal.me/AndreiIvanov420](https://paypal.me/AndreiIvanov420)

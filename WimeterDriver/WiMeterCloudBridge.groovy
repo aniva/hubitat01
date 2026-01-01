@@ -1,15 +1,13 @@
 /**
  * WiMeter Cloud Bridge (Parent)
  *
- * v4.11 - Refactored state variables to standard camelCase (e.g., locationPowerRealTimeKw) for consistency.
- * v4.10 - Fixed 'html_tile' metadata and stabilized power calculation.
- * v4.9 - Added 'PowerMeter' capability for correct icons and standard app integration.
- * v4.8 - Implemented "Safe Mode" HTML tile generation via 'apiStatus'.
- * v4.7 - Added 'power' attribute bridge to support standard dashboard color templates.
+ * v4.15 - Added 'powerLevel' attribute (High/Medium/Active/Idle) for easier automation logic.
+ * v4.14 - Added "Visual CSS" labels to Preferences.
+ * v4.13 - Removed color selectors (hardcoded Traffic Light scheme).
  */
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.11") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.15") {
         capability "PowerMeter" 
         capability "EnergyMeter"
         capability "Refresh"
@@ -24,16 +22,15 @@ metadata {
         attribute "location", "string"
         attribute "_version", "string"
         attribute "icon", "string"
-        attribute "htmlIcon", "string" // CamelCase update
+        attribute "htmlIcon", "string"
+        attribute "htmlTile", "string"
         
-        // Officially defined so Dashboard can see it
-        attribute "htmlTile", "string" // CamelCase update (formerly html_tile)
+        // NEW: Semantic State for Rules
+        attribute "powerLevel", "string"
         
-        // PARENT ATTRIBUTES (CamelCase Refactor)
+        // PARENT ATTRIBUTES
         attribute "locationPowerRealTimeKw", "number"
         attribute "locationPowerRealTimeW", "number"
-        
-        // DASHBOARD BRIDGE
         attribute "power", "number" 
         
         attribute "locationPowerPerDayKwh", "number"
@@ -50,13 +47,20 @@ metadata {
     
     preferences {
         input "apiUrl", "text", title: "WiMeter API URL", required: true
-        input "targetLocation", "text", title: "Target Location Name", required: true, description: "Matches the location attribute in API, e.g. Andrei's House"
+        input "targetLocation", "text", title: "Target Location Name", required: true, description: "Matches the location attribute in API"
         input "pollInterval", "enum", title: "Polling Interval", options: ["Manual", "1 Minute", "5 Minutes", "15 Minutes", "30 Minutes"], defaultValue: "5 Minutes"
         input "debugMode", "bool", title: "Enable Debug Logging", defaultValue: false
+        
+        // TILE CONFIGURATION (Visual CSS Labels)
+        input "headerTile", "text", title: "<b>Dashboard Tile Thresholds</b>", description: "Set the power levels (kW) that trigger status color changes.", displayDuringSetup: false, type: "paragraph", element: "paragraph"
+        
+        input "threshHigh", "decimal", title: "High Power <span style='background-color:#c0392b; color:white; padding:1px 4px; border-radius:3px; font-weight:bold; font-size:0.9em;'>RED</span> [kW]", defaultValue: 6.0, required: true
+        input "threshMed", "decimal", title: "Medium Power <span style='background-color:#f1c40f; color:white; padding:1px 4px; border-radius:3px; font-weight:bold; font-size:0.9em; text-shadow: 0px 0px 2px black;'>YELLOW</span> [kW]", defaultValue: 3.0, required: true
+        input "threshActive", "decimal", title: "Active Power <span style='background-color:#27ae60; color:white; padding:1px 4px; border-radius:3px; font-weight:bold; font-size:0.9em;'>GREEN</span> [kW]", defaultValue: 1.0, required: true
     }
 }
 
-def driverVersion() { return "4.11" }
+def driverVersion() { return "4.15" }
 
 def installed() { initialize() }
 
@@ -80,7 +84,6 @@ def initialize() {
 
 def resetAllData() {
     log.warn "Resetting all data..."
-    // Implementation can be added if needed to clear states
 }
 
 def recreateChildDevices() {
@@ -157,12 +160,8 @@ def updateParentState(items) {
         def results = calculateValueAndSuffix(item) 
         results.each { res ->
             if (res.baseType) {
-                // Construct CamelCase Attribute Name: location + BaseType + Suffix + UnitSuffix
-                // e.g., location + Power + RealTime + Kw -> locationPowerRealTimeKw
                 def attrName = "location${res.baseType.capitalize()}${res.suffix}${res.unitSuffix}"
-                
                 sendEvent(name: attrName, value: res.value, unit: res.unit)
-                
                 if (attrName == "locationPowerRealTimeKw") {
                      sendEvent(name: "power", value: res.value, unit: "kW")
                 }
@@ -170,7 +169,7 @@ def updateParentState(items) {
         }
     }
 
-    // --- HTML TILE GENERATION ---
+    // --- HTML TILE GENERATION & POWER LEVEL ---
     def powerVal = 0.0
     try {
         def powerItem = items.find { it.unit == "kW" || it.unit == "W" }
@@ -187,10 +186,36 @@ def updateParentState(items) {
         powerVal = 0.0
     }
 
-    def cardColor = "#7f8c8d" // Grey
-    if (powerVal >= 6.0) cardColor = "#c0392b" // Red
-    else if (powerVal >= 3.0) cardColor = "#f1c40f" // Yellow
-    else if (powerVal >= 1.0) cardColor = "#27ae60" // Green
+    // Threshold Logic (Defaults: 1.0, 3.0, 6.0)
+    def tHigh = settings.threshHigh != null ? settings.threshHigh.toBigDecimal() : 6.0
+    def tMed = settings.threshMed != null ? settings.threshMed.toBigDecimal() : 3.0
+    def tActive = settings.threshActive != null ? settings.threshActive.toBigDecimal() : 1.0
+    
+    // Hardcoded Colors
+    def cRed = "#c0392b"
+    def cYellow = "#f1c40f"
+    def cGreen = "#27ae60"
+    def cGrey = "#7f8c8d"
+
+    def cardColor = cGrey
+    def levelText = "Idle"
+    
+    if (powerVal >= tHigh) {
+        cardColor = cRed
+        levelText = "High"
+    } else if (powerVal >= tMed) {
+        cardColor = cYellow
+        levelText = "Medium"
+    } else if (powerVal >= tActive) {
+        cardColor = cGreen
+        levelText = "Active"
+    } else {
+        cardColor = cGrey
+        levelText = "Idle"
+    }
+    
+    // Send the Power Level Event
+    sendEvent(name: "powerLevel", value: levelText)
 
     def tileHtml = """
     <div style='
@@ -233,7 +258,6 @@ def updateChildDevice(name, items) {
     child.parseItems(items)
 }
 
-// Shared logic for calculating values and CamelCase suffixes
 def calculateValueAndSuffix(item) {
     def rawVal = item.reading.toFloat()
     def rawUnit = item.unit ? item.unit.trim() : ""
@@ -241,7 +265,6 @@ def calculateValueAndSuffix(item) {
     
     def results = []
 
-    // Helper to get CamelCase suffix based on interval
     def getSuffix = { i ->
         if (i == 0) return "RealTime"
         else if (i == 86400) return "PerDay"
@@ -252,7 +275,6 @@ def calculateValueAndSuffix(item) {
 
     if (rawUnit == "\$" || rawUnit == '$') {
         def suffix = getSuffix(interval)
-        // baseType: cost, unitSuffix: "" (empty for cleaner variable like costRealTime)
         results << [value: rawVal.round(2), unit: "\$", baseType: "cost", suffix: suffix, unitSuffix: ""]
     } 
     else if (rawUnit.contains("W") || rawUnit.contains("kW") || rawUnit.contains("Wh") || rawUnit.contains("kWh")) {

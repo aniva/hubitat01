@@ -1,5 +1,5 @@
 # WiMeter Hubitat Driver - Development Context
-**Last Updated:** v4.11 (January 1, 2026)
+**Last Updated:** v4.15 (January 1, 2026)
 **Project:** WiMeter Cloud Bridge for Hubitat Elevation
 
 ## 1. Project Overview
@@ -14,7 +14,7 @@ The driver consumes a JSON response that may be formatted as a List or a Map.
 **Key API Constraint:** The API splits data across multiple packets. You might get "Power" in one packet and "Cost" in another. The driver must **merge** these based on the device name.
 
 ### JSON Sample
-```json
+'''json
 {
     "ret": 1,
     "msg": "",
@@ -157,7 +157,7 @@ The driver consumes a JSON response that may be formatted as a List or a Map.
         }
     ]
 }
-```
+'''
 
 ## 3. Naming & Attribute Standards (STRICT)
 **Update v4.11:** We have shifted from snake_case to **camelCase** to align with Hubitat standards. We do not use standard generic attribute names (like 'power') except for the specific dashboard bridge.
@@ -229,83 +229,59 @@ If modifying this driver, strictly adhere to these fixes established during v1.0
 * **Manifest:** 'packageManifest.json' lists both drivers.
 * **Versioning:** Version numbers in the JSON manifest must match the 'driverVersion()' in the Groovy code.
 
-## 7. Dashboard HTML Tile Architecture
+## 7. Dashboard HTML Tile Architecture (v4.15)
 The driver generates a specialized HTML block (exposed via the 'htmlTile' attribute) to provide a "Live Status" card on dashboards.
 
 ### Visual Components
-1.  **Device Name:** In standard usage, the name of the device (e.g., "Range", "Boiler") is provided by the Dashboard's native Tile Label, which overlays the bottom of the card.
-2.  **Card Title:** The HTML content itself contains a fixed descriptive string ("Power" for children, "House Pwr" for parent).
-3.  **Color Logic:** The background color of the tile changes dynamically based on hardcoded kW thresholds.
+1.  **Device Name:** Provided by Dashboard native label.
+2.  **Card Title:** Fixed string ("Power" for children, "House Pwr" for parent).
+3.  **Color Logic:** Background color changes based on thresholds (Configurable via Preferences).
+4.  **Semantic State:** Exposes 'powerLevel' (High, Medium, Active, Idle) for Rule Machine logic.
 
-### Logic Implementation
-The tile uses "Nuclear CSS" (negative margins and '!important' tags) to remove standard dashboard padding and fill the entire tile area.
+### Logic Implementation (Updated v4.15)
+Colors are hardcoded to Traffic Light standards. Thresholds are configurable with **Visual CSS Labels**.
+Logic calculates 'powerLevel' string alongside color.
 
-**Current Thresholds (Hardcoded):**
-* **Red:** >= 6.0 kW
-* **Yellow:** >= 3.0 kW
-* **Green:** >= 1.0 kW
-* **Grey:** < 1.0 kW
+**Defaults (Parent):** Active: 1kW, Med: 3kW, High: 6kW
+**Defaults (Child):** Active: 0.4kW, Med: 1kW, High: 2kW
 
-**Code Snippet (Child Driver):**
-```groovy
-    // --- HTML TILE GENERATION (FIXED & SAFER) ---
-    def powerVal = 0.0
-    try {
-        def powerItem = items.find { it.unit == "kW" || it.unit == "W" }
-        if (powerItem && powerItem.reading != null) {
-            def rawVal = powerItem.reading.toBigDecimal()
-            if (powerItem.unit == "W") {
-                powerVal = (rawVal / 1000).toFloat().round(2)
-            } else {
-                powerVal = rawVal.toFloat().round(2)
-            }
-        }
-    } catch (e) {
-        powerVal = 0.0
-    }
-
-    def cardColor = "#7f8c8d"
-    if (powerVal >= 6.0) cardColor = "#c0392b"
-    else if (powerVal >= 3.0) cardColor = "#f1c40f"
-    else if (powerVal >= 1.0) cardColor = "#27ae60"
-
-    def tileHtml = """
-    <div style='
-        width: 95% !important; 
-        height: 85% !important;
-        margin-top: 5% !important;
-        margin-left: 0% !important;
-		margin-right: -40% !important;
-        margin-bottom: 15% !important;
-        background-color: ${cardColor}; 
-        color: white;
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        justify-content: center;
-        border-radius: 5px;
-    '>
-        <div style='font-size:0.8rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>Power</div>
-        <div style='font-size:1.5rem; font-weight:bold; line-height:1.1;'>${powerVal} <span style='font-size:0.6em'>kW</span></div>
-    </div>
-    """
+**Code Snippet (Logic):**
+'''groovy
+    // ... Threshold Setup ...
+    def cardColor = cGrey
+    def levelText = "Idle"
     
-    sendEvent(name: "htmlTile", value: tileHtml)
-```
+    if (powerVal >= tHigh) {
+        cardColor = cRed
+        levelText = "High"
+    } else if (powerVal >= tMed) {
+        cardColor = cYellow
+        levelText = "Medium"
+    } else if (powerVal >= tActive) {
+        cardColor = cGreen
+        levelText = "Active"
+    } else {
+        cardColor = cGrey
+        levelText = "Idle"
+    }
+    
+    sendEvent(name: "powerLevel", value: levelText)
+'''
 
 ---
 
-## 8. Future Roadmap / To-Do (v4.11+)
+## 8. Future Roadmap / To-Do (v4.15+)
 
 1.  **[COMPLETED] Standardize State Variables (CamelCase)**
-    * **Goal:** Refactor variable naming from underscores ('power_real_time') to standard camelCase ('powerRealTime') to ensure consistency between raw names and Hubitat's variable display.
     * **Status:** Done in v4.11.
 
-2.  **Fix Persistent "Unknown" (?) Device Icons**
-    * **Issue:** Even with 'capability "PowerMeter"', child devices like "Boiler" or "Range" often display a generic '?' icon instead of a Lightning Bolt or Plug.
-    * **Investigation:** Determine if Hubitat requires a specific "Device Type" definition or if the icon is cached at the platform level.
+2.  **[CLOSED] Fix Persistent "Unknown" (?) Device Icons**
+    * **Conclusion:** Cannot be set via driver code without changing capabilities to "Outlet/Switch", which causes Voice Assistant issues.
+    * **Workaround:** User must manually click the '?' icon and filter for "flash" to set the system icon.
 
-3.  **Configurable Power Tile Thresholds**
-    * **Issue:** kW thresholds for the tile color (Green/Yellow/Red) are currently hardcoded in the driver.
-    * **Fix:** Add 'Preferences' inputs to both Parent and Child drivers to allow users to define their own kW ranges for each color.
-    * **Bonus:** Allow users to select the colors themselves via a color picker or enum list.
+3.  **[COMPLETED] Configurable Power Tile Thresholds**
+    * **Status:** Done in v4.14. (Visual CSS added).
+
+4.  **[COMPLETED] Standardize Power Level Attribute**
+    * **Goal:** Add 'powerLevel' string attribute to simplify Rule Machine logic (e.g., "High", "Idle").
+    * **Status:** Done in v4.15.
