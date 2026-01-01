@@ -1,5 +1,5 @@
 # WiMeter Hubitat Driver - Development Context
-**Last Updated:** v4.10 (December 28, 2025)
+**Last Updated:** v4.11 (January 1, 2026)
 **Project:** WiMeter Cloud Bridge for Hubitat Elevation
 
 ## 1. Project Overview
@@ -31,7 +31,7 @@ The driver consumes a JSON response that may be formatted as a List or a Map.
             "name": "Andrei's House",
             "reading": 8.3,
             "unit": "$",
-            "interval": 86400, // interval 604800 = Per Day
+            "interval": 86400, // interval 86400 = Per Day
             "url": "https:\/\/wimeter.net\/res\/images\/icons\/home1.png",
             "location": "Andrei's House"
         },
@@ -160,76 +160,77 @@ The driver consumes a JSON response that may be formatted as a List or a Map.
 ```
 
 ## 3. Naming & Attribute Standards (STRICT)
-We do not use standard Hubitat capabilities like `capability "PowerMeter"` because they enforce generic attribute names (like `power`). We require granular, unit-suffixed names.
+**Update v4.11:** We have shifted from snake_case to **camelCase** to align with Hubitat standards. We do not use standard generic attribute names (like 'power') except for the specific dashboard bridge.
 
 ### Attribute Naming Convention
-* **Format:** `[type]_[interval]_[unit]`
-* **Case:** All Lowercase.
-* **Special Chars:** `/` removed (A/C -> ac). Spaces replaced by underscores. `$` replaced by `dollars`.
+* **Format:** '[type][IntervalSuffix][UnitSuffix]'
+* **Case:** camelCase (e.g., 'powerRealTimeKw', 'locationCostPerDay').
+* **Parent Prefix:** Parent attributes are prefixed with 'location' (e.g., 'locationPowerRealTimeKw').
 
-### Interval Logic
-The `interval` field (seconds) determines the middle part of the attribute name:
+### Interval Logic (Suffix)
+The 'interval' field (seconds) determines the middle part of the attribute name:
 
-| Interval (Sec) | Suffix Name |
+| Interval (Sec) | CamelCase Suffix |
 | :--- | :--- |
-| 0 | `_real-time` |
-| 86400 | `_per_day` |
-| 604800 | `_per_week` |
-| 2419200 - 2678400 | `_per_month` |
-| Other | `_per_period` |
+| 0 | 'RealTime' |
+| 86400 | 'PerDay' |
+| 604800 | 'PerWeek' |
+| 2419200 - 2678400 | 'PerMonth' |
+| Other | 'PerPeriod' |
 
-### Unit Suffix Logic
+### Unit Logic (Suffix)
 
-| Source Unit | Converted Unit | Suffix |
-| :--- | :--- | :--- |
-| W, kW (Interval 0) | **kW** | `_kw` |
-| Wh, kWh (Interval > 0) | **kWh** | `_kwh` |
-| $, Dollars | **$** | `_dollars` (or `_$`) |
+| Source Unit | Converted Unit | Suffix | Example |
+| :--- | :--- | :--- | :--- |
+| W, kW (Interval 0) | **kW** | 'Kw' | 'powerRealTimeKw' |
+| W, kW (Interval 0) | **W** | 'W' | 'powerRealTimeW' |
+| Wh, kWh (Interval > 0) | **kWh** | 'Kwh' | 'powerPerDayKwh' |
+| $, Dollars | **$** | (None) | 'costPerDay' |
 
 ## 4. Technical Constraints & Fixes
-If modifying this driver, strictly adhere to these fixes established during v1.0 - v4.10 development:
+If modifying this driver, strictly adhere to these fixes established during v1.0 - v4.11 development:
 
 ### A. The "Clean State" Rule
-* **Requirement:** Do **NOT** set missing attributes to `-1`.
+* **Requirement:** Do **NOT** set missing attributes to '-1'.
 * **Reason:** Users prefer a clean interface. If the API does not report "Real-time Cost" for a specific device, that attribute should simply not exist on the device page.
-* **Implementation:** The driver must calculate valid attributes and `sendEvent` only for what is present in the current payload.
+* **Implementation:** The driver must calculate valid attributes and 'sendEvent' only for what is present in the current payload.
 
 ### B. The "LazyMap" Serialization Fix
-* **Problem:** Hubitat's `LazyMap` object (from `slurper`) fails to serialize when passed from Parent -> Child driver, causing child data to be empty.
-* **Fix:** The Parent driver **MUST** convert the data to a standard Java `HashMap` before calling `child.parseItems()`.
+* **Problem:** Hubitat's 'LazyMap' object (from 'slurper') fails to serialize when passed from Parent -> Child driver, causing child data to be empty.
+* **Fix:** The Parent driver **MUST** convert the data to a standard Java 'HashMap' before calling 'child.parseItems()'.
 
 ### C. Initialization & Versioning
-* **Requirement:** Both drivers must include `capability "Initialize"`.
-* **Requirement:** Both drivers must maintain a `_version` attribute to verify the code update was applied successfully.
-* **Requirement:** Parent must include command `recreateChildDevices` to allow users to purge old/messy attributes if the naming convention changes.
+* **Requirement:** Both drivers must include 'capability "Initialize"'.
+* **Requirement:** Both drivers must maintain a '_version' attribute to verify the code update was applied successfully.
+* **Requirement:** Parent must include command 'recreateChildDevices' to allow users to purge old/messy attributes if the naming convention changes.
 
 ## 5. Driver Structure
 
-### Parent Driver (`WiMeterCloudBridge.groovy`)
+### Parent Driver ('WiMeterCloudBridge.groovy')
 * **Role:** Polling, HTTP GET, Preferences, Child Management.
-* **Capabilities:** `Refresh`, `Initialize`, `Sensor`, `PowerMeter`, `EnergyMeter`.
-* **Key Command:** `resetAllData` (Manual wipe), `recreateChildDevices`.
+* **Capabilities:** 'Refresh', 'Initialize', 'Sensor', 'PowerMeter', 'EnergyMeter'.
+* **Key Command:** 'resetAllData' (Manual wipe), 'recreateChildDevices'.
 * **Logic:**
-    * Filters incoming JSON by `targetLocation`.
-    * Groups items by `name`.
-    * If `name == targetLocation` -> Update Parent Attributes.
-    * If `name != targetLocation` -> Update Child Device.
+    * Filters incoming JSON by 'targetLocation'.
+    * Groups items by 'name'.
+    * If 'name == targetLocation' -> Update Parent Attributes.
+    * If 'name != targetLocation' -> Update Child Device.
 
-### Child Driver (`WiMeterChildDevice.groovy`)
+### Child Driver ('WiMeterCloudBridgeChild.groovy')
 * **Role:** Display container for appliances.
-* **Capabilities:** `Refresh`, `Initialize`, `Sensor`, `PowerMeter`, `EnergyMeter`.
+* **Capabilities:** 'Refresh', 'Initialize', 'Sensor', 'PowerMeter', 'EnergyMeter'.
 * **Logic:**
-    * `parseItems(items)`: Receives `HashMap` from parent.
-    * Updates `icon` and `html_icon` from URL.
-    * Generates `html_tile` for dashboards.
+    * 'parseItems(items)': Receives 'HashMap' from parent.
+    * Updates 'icon' and 'htmlIcon' from URL.
+    * Generates 'htmlTile' for dashboards.
 
 ## 6. Deployment (HPM)
 * **Status:** **Merged into Official HPM Repository.**
-* **Manifest:** `packageManifest.json` lists both drivers.
-* **Versioning:** Version numbers in the JSON manifest must match the `driverVersion()` in the Groovy code.
+* **Manifest:** 'packageManifest.json' lists both drivers.
+* **Versioning:** Version numbers in the JSON manifest must match the 'driverVersion()' in the Groovy code.
 
 ## 7. Dashboard HTML Tile Architecture
-The driver generates a specialized HTML block (exposed via the `html_tile` attribute) to provide a "Live Status" card on dashboards.
+The driver generates a specialized HTML block (exposed via the 'htmlTile' attribute) to provide a "Live Status" card on dashboards.
 
 ### Visual Components
 1.  **Device Name:** In standard usage, the name of the device (e.g., "Range", "Boiler") is provided by the Dashboard's native Tile Label, which overlays the bottom of the card.
@@ -237,7 +238,7 @@ The driver generates a specialized HTML block (exposed via the `html_tile` attri
 3.  **Color Logic:** The background color of the tile changes dynamically based on hardcoded kW thresholds.
 
 ### Logic Implementation
-The tile uses "Nuclear CSS" (negative margins and `!important` tags) to remove standard dashboard padding and fill the entire tile area.
+The tile uses "Nuclear CSS" (negative margins and '!important' tags) to remove standard dashboard padding and fill the entire tile area.
 
 **Current Thresholds (Hardcoded):**
 * **Red:** >= 6.0 kW
@@ -270,39 +271,41 @@ The tile uses "Nuclear CSS" (negative margins and `!important` tags) to remove s
 
     def tileHtml = """
     <div style='
-        width: 120% !important; 
-        height: 120% !important;
-        margin-top: -10% !important;
-        margin-left: -10% !important;
+        width: 95% !important; 
+        height: 85% !important;
+        margin-top: 5% !important;
+        margin-left: 0% !important;
+		margin-right: -40% !important;
+        margin-bottom: 15% !important;
         background-color: ${cardColor}; 
         color: white;
         display: flex; 
         flex-direction: column; 
         align-items: center; 
         justify-content: center;
-        border-radius: 15px;
+        border-radius: 5px;
     '>
         <div style='font-size:0.8rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>Power</div>
         <div style='font-size:1.5rem; font-weight:bold; line-height:1.1;'>${powerVal} <span style='font-size:0.6em'>kW</span></div>
     </div>
     """
     
-    sendEvent(name: "html_tile", value: tileHtml)
+    sendEvent(name: "htmlTile", value: tileHtml)
 ```
 
 ---
 
 ## 8. Future Roadmap / To-Do (v4.11+)
 
-1.  **Standardize State Variables (CamelCase)**
-    * **Goal:** Refactor variable naming from underscores (`power_real_time`) to standard camelCase (`powerRealTime`) to ensure consistency between raw names and Hubitat's variable display.
-    * **Impact:** Will require wiping/recreating child devices to remove old attribute names.
+1.  **[COMPLETED] Standardize State Variables (CamelCase)**
+    * **Goal:** Refactor variable naming from underscores ('power_real_time') to standard camelCase ('powerRealTime') to ensure consistency between raw names and Hubitat's variable display.
+    * **Status:** Done in v4.11.
 
 2.  **Fix Persistent "Unknown" (?) Device Icons**
-    * **Issue:** Even with `capability "PowerMeter"`, child devices like "Boiler" or "Range" often display a generic `?` icon instead of a Lightning Bolt or Plug.
+    * **Issue:** Even with 'capability "PowerMeter"', child devices like "Boiler" or "Range" often display a generic '?' icon instead of a Lightning Bolt or Plug.
     * **Investigation:** Determine if Hubitat requires a specific "Device Type" definition or if the icon is cached at the platform level.
 
 3.  **Configurable Power Tile Thresholds**
     * **Issue:** kW thresholds for the tile color (Green/Yellow/Red) are currently hardcoded in the driver.
-    * **Fix:** Add `Preferences` inputs to both Parent and Child drivers to allow users to define their own kW ranges for each color.
+    * **Fix:** Add 'Preferences' inputs to both Parent and Child drivers to allow users to define their own kW ranges for each color.
     * **Bonus:** Allow users to select the colors themselves via a color picker or enum list.
