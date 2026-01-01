@@ -43,6 +43,4 @@
 * **Function:** Fetches energy data from WiMeter cloud.
 
 ### Development To-Do List
-1.  [ ] **Expand Integration:** Add more granular data points or control features (as per upcoming requirements).
-2.  [ ] **Documentation:** Ensure `README.md` in `WimeterDriver` folder is up to date.
-3.  [ ] **Dashboard:** Create a specific dashboard tile design for Energy (similar to Vindstyrka?).
+1.  See [project context](../WimeterDriver/.gemini/GEMINI.md).
