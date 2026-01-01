@@ -1,14 +1,15 @@
 /**
  * WiMeter Cloud Bridge (Parent)
  *
+ * v4.11 - Refactored state variables to standard camelCase (e.g., locationPowerRealTimeKw) for consistency.
  * v4.10 - Fixed 'html_tile' metadata and stabilized power calculation.
  * v4.9 - Added 'PowerMeter' capability for correct icons and standard app integration.
- * v4.8 - Implemented "Safe Mode" HTML tile generation via 'apiStatus', subsequently removed in v4.10, for "Live Status" dashboard cards.
+ * v4.8 - Implemented "Safe Mode" HTML tile generation via 'apiStatus'.
  * v4.7 - Added 'power' attribute bridge to support standard dashboard color templates.
  */
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.10") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.11") {
         capability "PowerMeter" 
         capability "EnergyMeter"
         capability "Refresh"
@@ -23,39 +24,39 @@ metadata {
         attribute "location", "string"
         attribute "_version", "string"
         attribute "icon", "string"
-        attribute "html_icon", "string"
+        attribute "htmlIcon", "string" // CamelCase update
         
-        // NEW: Officially defined so Dashboard can see it
-        attribute "html_tile", "string"
+        // Officially defined so Dashboard can see it
+        attribute "htmlTile", "string" // CamelCase update (formerly html_tile)
         
-        // PARENT ATTRIBUTES
-        attribute "location_power_real-time_kw", "number"
-        attribute "location_power_real-time_w", "number"
+        // PARENT ATTRIBUTES (CamelCase Refactor)
+        attribute "locationPowerRealTimeKw", "number"
+        attribute "locationPowerRealTimeW", "number"
         
         // DASHBOARD BRIDGE
         attribute "power", "number" 
         
-        attribute "location_power_per_day_kwh", "number"
-        attribute "location_power_per_week_kwh", "number"
-        attribute "location_power_per_month_kwh", "number"
-        attribute "location_power_per_period_kwh", "number"
+        attribute "locationPowerPerDayKwh", "number"
+        attribute "locationPowerPerWeekKwh", "number"
+        attribute "locationPowerPerMonthKwh", "number"
+        attribute "locationPowerPerPeriodKwh", "number"
         
-        attribute "location_cost_real-time_\$", "number"
-        attribute "location_cost_per_day_\$", "number"
-        attribute "location_cost_per_week_\$", "number"
-        attribute "location_cost_per_month_\$", "number"
-        attribute "location_cost_per_period_\$", "number"
+        attribute "locationCostRealTime", "number"
+        attribute "locationCostPerDay", "number"
+        attribute "locationCostPerWeek", "number"
+        attribute "locationCostPerMonth", "number"
+        attribute "locationCostPerPeriod", "number"
     }
     
     preferences {
         input "apiUrl", "text", title: "WiMeter API URL", required: true
-        input "targetLocation", "text", title: "Target Location Name", required: true, description: "this is content of location attribute, e.g. Andrei's House"
+        input "targetLocation", "text", title: "Target Location Name", required: true, description: "Matches the location attribute in API, e.g. Andrei's House"
         input "pollInterval", "enum", title: "Polling Interval", options: ["Manual", "1 Minute", "5 Minutes", "15 Minutes", "30 Minutes"], defaultValue: "5 Minutes"
         input "debugMode", "bool", title: "Enable Debug Logging", defaultValue: false
     }
 }
 
-def driverVersion() { return "4.10" }
+def driverVersion() { return "4.11" }
 
 def installed() { initialize() }
 
@@ -79,6 +80,7 @@ def initialize() {
 
 def resetAllData() {
     log.warn "Resetting all data..."
+    // Implementation can be added if needed to clear states
 }
 
 def recreateChildDevices() {
@@ -148,29 +150,31 @@ def updateParentState(items) {
     def firstItem = items.find { it.url }
     if (firstItem) {
         sendEvent(name: "icon", value: firstItem.url)
-        sendEvent(name: "html_icon", value: "<img src='${firstItem.url}' style='height:40px;'>")
+        sendEvent(name: "htmlIcon", value: "<img src='${firstItem.url}' style='height:40px;'>")
     }
 
     items.each { item ->
         def results = calculateValueAndSuffix(item) 
         results.each { res ->
             if (res.baseType) {
-                def attrName = "location_${res.baseType}${res.suffix}${res.unitSuffix}"
+                // Construct CamelCase Attribute Name: location + BaseType + Suffix + UnitSuffix
+                // e.g., location + Power + RealTime + Kw -> locationPowerRealTimeKw
+                def attrName = "location${res.baseType.capitalize()}${res.suffix}${res.unitSuffix}"
+                
                 sendEvent(name: attrName, value: res.value, unit: res.unit)
                 
-                if (attrName == "location_power_real-time_kw") {
+                if (attrName == "locationPowerRealTimeKw") {
                      sendEvent(name: "power", value: res.value, unit: "kW")
                 }
             }
         }
     }
 
-    // --- HTML TILE GENERATION (FIXED & SAFER) ---
+    // --- HTML TILE GENERATION ---
     def powerVal = 0.0
     try {
         def powerItem = items.find { it.unit == "kW" || it.unit == "W" }
         if (powerItem && powerItem.reading != null) {
-            // Safer conversion using BigDecimal to avoid crashes on weird data
             def rawVal = powerItem.reading.toBigDecimal()
             if (powerItem.unit == "W") {
                 powerVal = (rawVal / 1000).toFloat().round(2)
@@ -188,7 +192,6 @@ def updateParentState(items) {
     else if (powerVal >= 3.0) cardColor = "#f1c40f" // Yellow
     else if (powerVal >= 1.0) cardColor = "#27ae60" // Green
 
-    // Nuclear CSS to remove padding
     def tileHtml = """
     <div style='
         width: 95% !important; 
@@ -210,8 +213,7 @@ def updateParentState(items) {
     </div>
     """
     
-    // Now correctly sending to 'html_tile'
-    sendEvent(name: "html_tile", value: tileHtml)
+    sendEvent(name: "htmlTile", value: tileHtml)
 }
 
 def updateChildDevice(name, items) {
@@ -231,6 +233,7 @@ def updateChildDevice(name, items) {
     child.parseItems(items)
 }
 
+// Shared logic for calculating values and CamelCase suffixes
 def calculateValueAndSuffix(item) {
     def rawVal = item.reading.toFloat()
     def rawUnit = item.unit ? item.unit.trim() : ""
@@ -238,32 +241,34 @@ def calculateValueAndSuffix(item) {
     
     def results = []
 
+    // Helper to get CamelCase suffix based on interval
+    def getSuffix = { i ->
+        if (i == 0) return "RealTime"
+        else if (i == 86400) return "PerDay"
+        else if (i == 604800) return "PerWeek"
+        else if (i >= 2419200 && i <= 2678400) return "PerMonth"
+        else return "PerPeriod"
+    }
+
     if (rawUnit == "\$" || rawUnit == '$') {
-        def suffix = getIntervalSuffix(interval)
-        results << [value: rawVal.round(2), unit: "\$", baseType: "cost", suffix: suffix, unitSuffix: "_\$"]
+        def suffix = getSuffix(interval)
+        // baseType: cost, unitSuffix: "" (empty for cleaner variable like costRealTime)
+        results << [value: rawVal.round(2), unit: "\$", baseType: "cost", suffix: suffix, unitSuffix: ""]
     } 
     else if (rawUnit.contains("W") || rawUnit.contains("kW") || rawUnit.contains("Wh") || rawUnit.contains("kWh")) {
-        def suffix = getIntervalSuffix(interval)
+        def suffix = getSuffix(interval)
         if (interval == 0) {
             def val_kW = (rawUnit == "W" || rawUnit == "Wh") ? (rawVal / 1000).round(3) : rawVal.round(3)
             def val_W = (rawUnit == "kW" || rawUnit == "kWh") ? (rawVal * 1000).round(1) : rawVal.round(1)
 
-            results << [value: val_kW, unit: "kW", baseType: "power", suffix: suffix, unitSuffix: "_kw"]
-            results << [value: val_W, unit: "W", baseType: "power", suffix: suffix, unitSuffix: "_w"]
+            results << [value: val_kW, unit: "kW", baseType: "power", suffix: suffix, unitSuffix: "Kw"]
+            results << [value: val_W, unit: "W", baseType: "power", suffix: suffix, unitSuffix: "W"]
         } else {
             def val_kWh = (rawUnit == "W" || rawUnit == "Wh") ? (rawVal / 1000).round(3) : rawVal.round(3)
-            results << [value: val_kWh, unit: "kWh", baseType: "power", suffix: suffix, unitSuffix: "_kwh"]
+            results << [value: val_kWh, unit: "kWh", baseType: "power", suffix: suffix, unitSuffix: "Kwh"]
         }
     }
     return results
-}
-
-def getIntervalSuffix(interval) {
-    if (interval == 0) return "_real-time"
-    else if (interval == 86400) return "_per_day"
-    else if (interval == 604800) return "_per_week"
-    else if (interval >= 2419200 && interval <= 2678400) return "_per_month"
-    else return "_per_period"
 }
 
 def logsOff() { device.updateSetting("debugMode", [value:"false", type:"bool"]) }

@@ -1,10 +1,11 @@
 /**
  * WiMeter Child Device
  *
+ * v4.11 - Refactored state variables to standard camelCase (e.g., powerRealTimeKw).
  * v4.10 - Fixed 'html_tile' metadata and stabilized power calculation.
- * v4.9 - Added standard 'PowerMeter' & 'EnergyMeter' capabilities. Fixes device icon (shows Lightning Bolt instead of '?') and enables selection in standard energy apps.
- * v4.8 - Implemented "Safe Mode" HTML tile generation via 'apiStatus', removed in v4.10, to prevent dashboard caching issues and device page layout breaks.
- * v4.7 - Added 'power' attribute bridge to mirror real-time usage for standard dashboard templates.
+ * v4.9 - Added standard 'PowerMeter' & 'EnergyMeter' capabilities.
+ * v4.8 - Implemented "Safe Mode" HTML tile generation via 'apiStatus'.
+ * v4.7 - Added 'power' attribute bridge to mirror real-time usage.
  */
 
 metadata {
@@ -17,29 +18,29 @@ metadata {
 
         attribute "_version", "string"
         attribute "icon", "string"
-        attribute "html_icon", "string"
+        attribute "htmlIcon", "string" // CamelCase
         
         // NEW: Officially defined
-        attribute "html_tile", "string"
+        attribute "htmlTile", "string" // CamelCase
 
-        attribute "power_real-time_kw", "number"
-        attribute "power_real-time_w", "number"
+        attribute "powerRealTimeKw", "number"
+        attribute "powerRealTimeW", "number"
         attribute "power", "number" 
         
-        // ... rest of your attributes ...
-        attribute "power_per_day_kwh", "number"
-        attribute "power_per_week_kwh", "number"
-        attribute "power_per_month_kwh", "number"
-        attribute "power_per_period_kwh", "number"
-        attribute "cost_real-time_\$", "number"
-        attribute "cost_per_day_\$", "number"
-        attribute "cost_per_week_\$", "number"
-        attribute "cost_per_month_\$", "number"
-        attribute "cost_per_period_\$", "number"
+        attribute "powerPerDayKwh", "number"
+        attribute "powerPerWeekKwh", "number"
+        attribute "powerPerMonthKwh", "number"
+        attribute "powerPerPeriodKwh", "number"
+        
+        attribute "costRealTime", "number"
+        attribute "costPerDay", "number"
+        attribute "costPerWeek", "number"
+        attribute "costPerMonth", "number"
+        attribute "costPerPeriod", "number"
     }
 }
 
-def driverVersion() { return "4.10" }
+def driverVersion() { return "4.11" }
 
 def installed() { initialize() }
 
@@ -56,7 +57,7 @@ def parseItems(items) {
     if (firstItem) {
         if (device.currentValue("icon") != firstItem.url) {
             sendEvent(name: "icon", value: firstItem.url)
-            sendEvent(name: "html_icon", value: "<img src='${firstItem.url}' style='height:40px;'>")
+            sendEvent(name: "htmlIcon", value: "<img src='${firstItem.url}' style='height:40px;'>")
         }
     }
 
@@ -64,17 +65,19 @@ def parseItems(items) {
         def results = calculateValueAndSuffix(item)
         results.each { res ->
             if (res.baseType) {
+                // Construct CamelCase Attribute Name: BaseType + Suffix + UnitSuffix
+                // e.g., power + RealTime + Kw -> powerRealTimeKw
                 def attrName = "${res.baseType}${res.suffix}${res.unitSuffix}"
                 sendEvent(name: attrName, value: res.value, unit: res.unit)
                 
-                if (attrName == "power_real-time_kw") {
-                     sendEvent(name: "power", value: res.value, unit: "kW")
+                if (attrName == "powerRealTimeKw") {
+                      sendEvent(name: "power", value: res.value, unit: "kW")
                 }
             }
         }
     }
     
-    // --- HTML TILE GENERATION (FIXED & SAFER) ---
+    // --- HTML TILE GENERATION ---
     def powerVal = 0.0
     try {
         def powerItem = items.find { it.unit == "kW" || it.unit == "W" }
@@ -116,14 +119,14 @@ def parseItems(items) {
     </div>
     """
     
-    sendEvent(name: "html_tile", value: tileHtml)
+    sendEvent(name: "htmlTile", value: tileHtml)
     
     if (device.currentValue("_version") != driverVersion()) {
         sendEvent(name: "_version", value: driverVersion())
     }
 }
 
-// Logic duplicated for Child context
+// Logic duplicated for Child context (identical to parent now)
 def calculateValueAndSuffix(item) {
     def rawVal = item.reading.toFloat()
     def rawUnit = item.unit ? item.unit.trim() : ""
@@ -131,30 +134,35 @@ def calculateValueAndSuffix(item) {
     
     def results = []
 
+    def getSuffix = { i ->
+        if (i == 0) return "RealTime"
+        else if (i == 86400) return "PerDay"
+        else if (i == 604800) return "PerWeek"
+        else if (i >= 2419200 && i <= 2678400) return "PerMonth"
+        else return "PerPeriod"
+    }
+
     if (rawUnit == "\$" || rawUnit == '$') {
-        def suffix = getIntervalSuffix(interval)
-        results << [value: rawVal.round(2), unit: "\$", baseType: "cost", suffix: suffix, unitSuffix: "_\$"]
+        def suffix = getSuffix(interval)
+        results << [value: rawVal.round(2), unit: "\$", baseType: "cost", suffix: suffix, unitSuffix: ""]
     } 
     else if (rawUnit.contains("W") || rawUnit.contains("kW") || rawUnit.contains("Wh") || rawUnit.contains("kWh")) {
-        def suffix = getIntervalSuffix(interval)
+        def suffix = getSuffix(interval)
         if (interval == 0) {
             def val_kW = (rawUnit == "W" || rawUnit == "Wh") ? (rawVal / 1000).round(3) : rawVal.round(3)
             def val_W = (rawUnit == "kW" || rawUnit == "kWh") ? (rawVal * 1000).round(1) : rawVal.round(1)
 
-            results << [value: val_kW, unit: "kW", baseType: "power", suffix: suffix, unitSuffix: "_kw"]
-            results << [value: val_W, unit: "W", baseType: "power", suffix: suffix, unitSuffix: "_w"]
+            results << [value: val_kW, unit: "kW", baseType: "power", suffix: suffix, unitSuffix: "Kw"]
+            results << [value: val_W, unit: "W", baseType: "power", suffix: suffix, unitSuffix: "W"]
         } else {
             def val_kWh = (rawUnit == "W" || rawUnit == "Wh") ? (rawVal / 1000).round(3) : rawVal.round(3)
-            results << [value: val_kWh, unit: "kWh", baseType: "power", suffix: suffix, unitSuffix: "_kwh"]
+            results << [value: val_kWh, unit: "kWh", baseType: "power", suffix: suffix, unitSuffix: "Kwh"]
         }
     }
     return results
 }
 
 def getIntervalSuffix(interval) {
-    if (interval == 0) return "_real-time"
-    else if (interval == 86400) return "_per_day"
-    else if (interval == 604800) return "_per_week"
-    else if (interval >= 2419200 && interval <= 2678400) return "_per_month"
-    else return "_per_period"
+    // Deprecated in favor of closure above, but kept if other legacy methods call it
+    // Not used in new logic.
 }
