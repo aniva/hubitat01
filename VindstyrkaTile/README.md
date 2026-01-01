@@ -16,32 +16,34 @@ The system follows a "Bridge" pattern to separate the physical device (Zigbee) f
 ```mermaid
 graph TD
     %% Nodes
-    Device["IKEA VINDSTYRKA<br/>(Physical Sensor)"]
-    Hub["Hubitat Elevation<br/>(C-8 Pro)"]
-    PhyDriver["Dan Danache Driver<br/>(IKEA Zigbee Driver)"]
-    RuleEng["Rule Machine<br/>(Logic Bridge)"]
-    VirtDriver["Vindstyrka Tile v2.3<br/>(Virtual Driver)"]
-    Dashboard["Hubitat Dashboard<br/>(User UI)"]
+    Sensor[IKEA VIRT Sensor<br/>(Physical Device)]
+    Hub[Hubitat Elevation<br/>(C-8 Pro)]
+    Danache[Danache Driver<br/>(Zigbee Parser)]
+    RuleEng[Rule Eng<br/>(Logic Bridge)]
+    VirtDriver[VIRT Dev Driver<br/>(Logic & Rendering)]
+    VirtDevice[VIRT Device<br/>(Virtual Tile Instance)]
+    Dash[Hubitat Dashboard]
 
     %% Styles
-    style Device fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style Sensor fill:#f9f9f9,stroke:#333,stroke-width:2px
     style Hub fill:#d4efdf,stroke:#27ae60,stroke-width:2px
-    style VirtDriver fill:#d6eaf8,stroke:#3498db,stroke-width:2px
+    style VirtDevice fill:#d6eaf8,stroke:#3498db,stroke-width:2px
 
     %% Flow
-    Device -->|Zigbee 3.0| Hub
-    Hub -->|Raw Attributes| PhyDriver
-    PhyDriver -->|Events: PM2.5 / VOC| RuleEng
+    Sensor -->|Zigbee 3.0| Hub
+    Hub -->|Raw Data| Danache
+    Danache -->|Events: PM2.5 / VOC| RuleEng
     RuleEng -->|Command: updateAirQuality| VirtDriver
-    VirtDriver -->|Attribute: html_tile| Dashboard
+    VirtDriver -->|Updates State| VirtDevice
+    VirtDevice -->|Attribute: html_tile| Dash
 ```
 
 **Flow Description:**
-1.  **IKEA VINDSTYRKA:** Sends raw data to the hub via Zigbee.
-2.  **Dan Danache Driver:** Parses the Zigbee messages into device events.
-3.  **Rule Machine:** Detects the changes, captures the values into variables, and "bridges" them to the virtual device.
-4.  **Vindstyrka Tile (This Driver):** Receives the clean data, calculates trends (Linear Regression), determines health state (WHO Thresholds), and generates the HTML.
-5.  **Dashboard:** simply displays the pre-rendered HTML tile.
+1.  **IKEA VIRT Sensor:** Sends raw environmental data to the hub.
+2.  **Hubitat / Danache Driver:** Parses the Zigbee messages into device events.
+3.  **Rule Eng:** Detects the changes, bridges the values to the virtual side.
+4.  **VIRT Dev Driver (This Code):** Receives data, calculates Linear Regression trends, applies WHO thresholds, and generates HTML.
+5.  **VIRT Device:** Stores the current state (`html_tile`, `status_table`) for the Dashboard to read.
 
 ## Key Features
 1.  **Visual Dashboard Tile:** A minimalist "Nuclear" style CSS tile showing PM2.5 and VOC levels.
@@ -64,6 +66,15 @@ graph TD
 4.  Save.
 
 ## Setup & Configuration
+
+### 0. Optimize Physical Sensor Reporting (Recommended)
+By default, the IKEA sensor may report tiny fluctuations very frequently (e.g., every few seconds), which can trigger the Rule Machine logic unnecessarily often.
+
+1.  Open the **Physical IKEA Sensor** device page.
+2.  Locate the setting: **"Throttle events"** (or "Minimum time interval").
+3.  Change it from "Report all events" to **2 minutes** (or higher).
+4.  Click **Save Preferences**.
+    * *Why?* This drastically reduces CPU load on the hub while keeping the dashboard data sufficiently current (air quality rarely changes drastically in under 2 minutes).
 
 ### 1. Create the Virtual Device
 1.  Go to **Devices** -> **Add Device**.
@@ -101,9 +112,8 @@ You must set the variables *before* running the command.
 1.  **Action 1: Capture PM2.5**
     * Select Action: **Set Variable**.
     * Select Variable to Set: **`current_pm25`**.
-    * *Note: The "Operation" dropdown will appear ONLY after you select the variable name.*
     * Operation: **Device Attribute**.
-    * Select Device: **Physical IKEA Sensor**.
+    * Select Device: **Physical IKEA Sensor** (Source).
     * Select Attribute: **`Pm25`**.
 
 2.  **Action 2: Capture VOC**
@@ -112,7 +122,7 @@ You must set the variables *before* running the command.
 3.  **Action 3: Update the Tile**
     * Select Action: **Run Custom Action**.
     * Select Capability: **Actuator**.
-    * Select Device: **Virtual Tile Device** (e.g., "Living Room Air Tile").
+    * Select Device: **Virtual Tile Device** (Destination).
     * Select Command: **`updateAirQuality`**.
     * **Parameter 1:** Type: **Decimal** -> Click **"Use Variable"** -> Select **`current_pm25`**.
     * **Parameter 2:** Type: **Decimal** -> Click **"Use Variable"** -> Select **`current_voc`**.
