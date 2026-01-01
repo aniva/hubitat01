@@ -3,8 +3,8 @@
   "author": "Aniva",
   "version": "4.15",
   "minimumHEVersion": "2.3.0",
-  "dateReleased": "2025-12-28",
-  "releaseNotes": "Cumulative update for WiMeter Cloud Bridge Driver. Includes latest stability improvements, strict attribute naming standards (real-time W/kW & cost), and optimized Parent/Child device architecture.",
+  "dateReleased": "2026-01-01",
+  "releaseNotes": "Major v4.15 Cumulative Update. \n\n1. ATTRIBUTE REFACTOR: Standardized all state variables to CamelCase (e.g., 'powerRealTimeW') to align with Hubitat standards. \n2. DASHBOARD TILE: Added configurable 'Live Status' HTML tile with customizable kW thresholds (Red/Yellow/Green). \n3. AUTOMATION: Added 'powerLevel' attribute (High/Medium/Active/Idle) for simplified Rule Machine logic. \n4. UX: Added Visual CSS labels to Preferences and fixed icon/stability issues.",
   "drivers": [
     {
       "id": "92d05738-9572-4d04-9549-044738734960",
