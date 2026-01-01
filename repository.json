@@ -23,6 +23,17 @@
       ],
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/VindstyrkaTile/packageManifest.json",
       "description": "Visual Dashboard Tile and Logic Proxy for IKEA VINDSTYRKA sensors"
+    },
+    {
+      "name": "OpenWeatherMap-Alerts (Icon Fix)",
+      "category": "Weather",
+      "tags": [
+        "Weather",
+        "Icons",
+        "Driver"
+      ],
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/OpenWeatherMap/packageManifest.json",
+      "description": "Patched version of OpenWeatherMap-Alerts driver with fixed icon hosting."
     }
   ]
 }

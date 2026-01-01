@@ -1,19 +1,59 @@
-# Aniva's Hubitat Integration Projects
+# Hubitat Drivers & Integrations
 
-Welcome to my personal collection of custom drivers and integrations for the Hubitat Elevation platform.
+A collection of custom drivers and tools for the **Hubitat Elevation** platform.
 
-## Projects
+**Author:** [Aniva](https://github.com/aniva)  
+**Support:** [PayPal.me/AndreiIvanov420](https://paypal.me/AndreiIvanov420)
 
-### 1. WiMeter Cloud Bridge Driver
-A hybrid Parent/Child driver system that bridges the WiMeter Energy Monitoring API to Hubitat. It supports real-time power monitoring, cost calculation, and automatic appliance discovery.
+---
 
-* **Current Version:** v4.10
-* **Key Features:** Real-time polling, HTML Dashboard tiles, and strict attribute naming (kW/kWh/$).
-* **Documentation:** [Read full documentation and installation instructions](WimeterDriver/README.md)
+## 📦 Installation via Hubitat Package Manager (HPM)
 
-### 2. IKEA VINDSTYRKA Air Quality Tile
-This project enhances the IKEA VINDSTYRKA Zigbee Air Quality Sensor. While the sensor pairs natively with Hubitat, the raw data is noisy and lacks visual "At-a-glance" dashboard elements.
+The easiest way to install and update these drivers is using **Hubitat Package Manager (HPM)**.
 
-* **Currrent Version** v1.0
-* **Key Features** Visual Dashboard Tile with health status colors, Trend Indicators, and Spike Smoothing logic.
-* **Documentation**: [Read full documentation and installation instructions](VindstyrkaTile/README.md)
+1.  Open the **Hubitat Package Manager** app on your hub.
+2.  Select **Settings** (or "Package Manager Settings").
+3.  Click **"Add a Custom Repository"**.
+4.  Paste this URL:
+    ```text
+    [https://raw.githubusercontent.com/aniva/hubitat01/master/repository.json](https://raw.githubusercontent.com/aniva/hubitat01/master/repository.json)
+    ```
+5.  Click **Save**.
+6.  Go back to the main menu and select **Install**.
+7.  Search for the desired package (e.g., "Vindstyrka" or "OpenWeatherMap") and follow the prompts.
+
+---
+
+## 🛠️ Available Projects
+
+### 1. [Vindstyrka Air Quality Tile](./VindstyrkaTile)
+**Status:** Stable (v2.3)
+
+A comprehensive integration for the **IKEA VINDSTYRKA** Zigbee Air Quality Sensor. It creates a beautiful dashboard tile and provides "smart" logic to filter sensor noise.
+
+* **Features:**
+    * **Visual Tile:** Full-bleed CSS tile with Green/Yellow/Red health status.
+    * **Smart Trends:** Uses Linear Regression to show trend arrows (↗ ↘), filtering out momentary spikes.
+    * **Unified Status:** Crash-proof driver table showing live data vs. WHO thresholds.
+    * **Automation Ready:** Exposes `airQualityState` ("good", "fair", "poor") for triggering fans/purifiers.
+
+### 2. [OpenWeatherMap-Alerts (Icon Fix)](./OpenWeatherMap)
+**Status:** Stable (v0.7.2 Patch)
+
+A patched version of the popular **OpenWeatherMap-Alerts** driver by Matthew (Scottma61).
+
+* **The Fix:** Replaces the broken `tinyurl.com` icon hosting (which causes broken images on dashboards) with a reliable, direct GitHub link to the **HubitatCommunity/WeatherIcons** library.
+* **Note:** This is purely a maintenance patch to restore functionality; all original logic credits belong to the original author.
+
+### 3. [WiMeter Cloud Bridge](./WimeterDriver)
+**Status:** Stable
+
+A cloud integration driver for the **WiMeter** energy monitoring solution.
+
+* **Features:** Bridges WiMeter cloud data into Hubitat for energy automation and dashboarding.
+
+---
+
+## ❤️ Support
+If you find these drivers useful, you can support the development here:
+[PayPal.me/AndreiIvanov420](https://paypal.me/AndreiIvanov420)
