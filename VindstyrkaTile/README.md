@@ -16,12 +16,12 @@ The system follows a "Bridge" pattern to separate the physical device (Zigbee) f
 ```mermaid
 graph TD
     %% Nodes
-    Sensor[IKEA VIRT Sensor<br/>(Physical Device)]
-    Hub[Hubitat Elevation<br/>(C-8 Pro)]
-    Danache[Danache Driver<br/>(Zigbee Parser)]
-    RuleEng[Rule Eng<br/>(Logic Bridge)]
-    VirtDriver[VIRT Dev Driver<br/>(Logic & Rendering)]
-    VirtDevice[VIRT Device<br/>(Virtual Tile Instance)]
+    Sensor["IKEA VIRT Sensor<br/>(Physical Device)"]
+    Hub["Hubitat Elevation<br/>(C-8 Pro)"]
+    Danache["Danache Driver<br/>(Zigbee Parser)"]
+    RuleEng["Rule Eng<br/>(Logic Bridge)"]
+    VirtDriver["VIRT Dev Driver<br/>(Logic & Rendering)"]
+    VirtDevice["VIRT Device<br/>(Virtual Tile Instance)"]
     Dash[Hubitat Dashboard]
 
     %% Styles
