@@ -14,7 +14,7 @@ The driver consumes a JSON response that may be formatted as a List or a Map.
 **Key API Constraint:** The API splits data across multiple packets. You might get "Power" in one packet and "Cost" in another. The driver must **merge** these based on the device name.
 
 ### JSON Sample
-'''json
+```json
 {
     "ret": 1,
     "msg": "",
@@ -157,7 +157,7 @@ The driver consumes a JSON response that may be formatted as a List or a Map.
         }
     ]
 }
-'''
+```
 
 ## 3. Naming & Attribute Standards (STRICT)
 **Update v4.11:** We have shifted from snake_case to **camelCase** to align with Hubitat standards. We do not use standard generic attribute names (like 'power') except for the specific dashboard bridge.
@@ -246,7 +246,7 @@ Logic calculates 'powerLevel' string alongside color.
 **Defaults (Child):** Active: 0.4kW, Med: 1kW, High: 2kW
 
 **Code Snippet (Logic):**
-'''groovy
+```groovy
     // ... Threshold Setup ...
     def cardColor = cGrey
     def levelText = "Idle"
@@ -266,7 +266,7 @@ Logic calculates 'powerLevel' string alongside color.
     }
     
     sendEvent(name: "powerLevel", value: levelText)
-'''
+```
 
 ---
 
