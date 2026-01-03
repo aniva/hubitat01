@@ -2,16 +2,18 @@
  * IKEA TIMMERFLOTTE Matter Sensor
  *
  * Description:
- * A dedicated driver for the IKEA TIMMERFLOTTE Matter Temperature & Humidity Sensor.
- * Handles standard Matter clusters for Temp (0x0402), Humidity (0x0405), and Power (0x002F).
+ * Dedicated driver for IKEA TIMMERFLOTTE.
+ * Uses Matter Helper Library for robust Endpoint targeting (Temp:01, Hum:02, Bat:00).
  *
  * Author: Aniva
- * Date: 2026-01-02
+ * Date: 2026-01-03
  */
 
 import groovy.transform.Field
+import hubitat.device.HubAction
+import hubitat.device.Protocol
 
-@Field static final String driverVersion = "1.0.1"
+@Field static final String driverVersion = "1.0.6"
 
 metadata {
     definition (name: "IKEA TIMMERFLOTTE Matter Sensor", namespace: "aniva", author: "Aniva") {
@@ -25,7 +27,6 @@ metadata {
 
         attribute "_version", "string"
 
-        // Standard Matter Fingerprint for Timmerflotte
         fingerprint endpointId: "01", inClusters: "0003,0004,001D,0402,0405,002F", outClusters: "", model: "TIMMERFLOTTE", manufacturer: "IKEA of Sweden"
     }
 
@@ -49,12 +50,11 @@ metadata {
         </div>"""
         
         input "logEnable", "bool", title: "Enable Debug Logging", defaultValue: true
-        input "tempOffset", "decimal", title: "Temperature Offset", description: "Adjust temperature by this amount", defaultValue: 0.0
-        input "humOffset", "decimal", title: "Humidity Offset", description: "Adjust humidity by this amount", defaultValue: 0.0
+        input "txtEnable", "bool", title: "Enable Description Text", defaultValue: true
+        input "tempOffset", "decimal", title: "Temperature Offset", defaultValue: 0.0
+        input "humOffset", "decimal", title: "Humidity Offset", defaultValue: 0.0
     }
 }
-
-// ... (Rest of logic remains identical to previous version)
 
 void logsOff() {
     log.warn "Debug logging disabled..."
@@ -73,42 +73,42 @@ void updated() {
 
 void initialize() {
     sendEvent(name: "_version", value: driverVersion)
-    updateVersion()
-    log.info "IKEA Timmerflotte Driver initialized (v${driverVersion})"
     if (logEnable) runIn(1800, logsOff)
-}
-
-void updateVersion() {
-    if (state._version != driverVersion) {
-        state._version = driverVersion
-    }
+    configure() // Auto-configure on init
 }
 
 void configure() {
-    log.info "Configuring Matter subscriptions..."
-    initialize()
-    List<String> cmds = []
-    cmds.add(subscribeToAttribute(0x0402, 0x0000)) 
-    cmds.add(subscribeToAttribute(0x0405, 0x0000))
-    cmds.add(subscribeToAttribute(0x002F, 0x000C))
-    sendHubCommand(new hubitat.device.HubMultiAction(cmds, hubitat.device.Protocol.MATTER))
+    if (logEnable) log.info "Configuring Matter subscriptions (Clean Subscribe)..."
+    
+    // Use the robust Matter Helper Library (Same as kkossev driver)
+    List<Map<String,String>> paths = []
+    
+    // Endpoint 01: Temperature (0x0402)
+    paths.add(matter.attributePath(0x01, 0x0402, 0x0000)) 
+    
+    // Endpoint 02: Humidity (0x0405)
+    paths.add(matter.attributePath(0x02, 0x0405, 0x0000)) 
+    
+    // Endpoint 00: Battery (0x002F) - Root Node
+    paths.add(matter.attributePath(0x00, 0x002F, 0x000C)) 
+
+    // cleanSubscribe handles the padding and hex formatting perfectly
+    String cmd = matter.cleanSubscribe(1, 0xFFFF, paths)
+    sendHubCommand(new HubAction(cmd, Protocol.MATTER))
+    
+    log.warn "Configuration sent. Press sensor button to wake device."
 }
 
 void refresh() {
-    log.info "Refreshing..."
-    List<String> cmds = []
-    cmds.add(readAttribute(0x0402, 0x0000))
-    cmds.add(readAttribute(0x0405, 0x0000))
-    cmds.add(readAttribute(0x002F, 0x000C))
-    sendHubCommand(new hubitat.device.HubMultiAction(cmds, hubitat.device.Protocol.MATTER))
-}
-
-String readAttribute(int cluster, int attribute) {
-    return "he rattr ${device.deviceNetworkId} 01 ${Integer.toHexString(cluster)} ${Integer.toHexString(attribute)}"
-}
-
-String subscribeToAttribute(int cluster, int attribute) {
-    return "he subscribe ${device.deviceNetworkId} 01 ${Integer.toHexString(cluster)} ${Integer.toHexString(attribute)} 0 120"
+    if (logEnable) log.info "Refreshing..."
+    
+    List<Map<String,String>> paths = []
+    paths.add(matter.attributePath(0x01, 0x0402, 0x0000))
+    paths.add(matter.attributePath(0x02, 0x0405, 0x0000))
+    paths.add(matter.attributePath(0x00, 0x002F, 0x000C))
+    
+    String cmd = matter.readAttributes(paths)
+    sendHubCommand(new HubAction(cmd, Protocol.MATTER))
 }
 
 void parse(String description) {
@@ -116,20 +116,34 @@ void parse(String description) {
     Map descMap = matter.parseDescriptionAsMap(description)
     
     if (descMap) {
-        if (descMap.cluster == "0402" && descMap.attrId == "0000") {
+        Integer ep = Integer.parseInt(descMap.endpoint, 16)
+        Integer cluster = Integer.parseInt(descMap.cluster, 16)
+        Integer attrId = Integer.parseInt(descMap.attrId, 16)
+        
+        // Temperature (EP 01, Cluster 0402)
+        if (ep == 0x01 && cluster == 0x0402 && attrId == 0x0000) {
             def rawValue = Integer.parseInt(descMap.value, 16)
             if (rawValue > 32767) rawValue -= 65536
+            
             def finalVal = (rawValue / 100.0) + (tempOffset ?: 0.0)
             finalVal = Math.round(finalVal * 100) / 100
-            sendEvent(name: "temperature", value: finalVal, unit: "°C", descriptionText: "Temperature is ${finalVal}°C")
+            
+            String unit = location.temperatureScale == "F" ? "°F" : "°C"
+            if (unit == "°F") finalVal = (finalVal * 1.8) + 32 // basic C to F conversion if needed
+            
+            sendEvent(name: "temperature", value: finalVal, unit: unit, descriptionText: "Temperature is ${finalVal}${unit}")
         }
-        else if (descMap.cluster == "0405" && descMap.attrId == "0000") {
+        
+        // Humidity (EP 02, Cluster 0405)
+        else if (ep == 0x02 && cluster == 0x0405 && attrId == 0x0000) {
             def rawValue = Integer.parseInt(descMap.value, 16)
             def finalVal = (rawValue / 100.0) + (humOffset ?: 0.0)
             finalVal = Math.round(finalVal * 100) / 100
             sendEvent(name: "humidity", value: finalVal, unit: "%", descriptionText: "Humidity is ${finalVal}%")
         }
-        else if (descMap.cluster == "002F" && descMap.attrId == "000C") {
+
+        // Battery (EP 00, Cluster 002F)
+        else if (ep == 0x00 && cluster == 0x002F && attrId == 0x000C) {
              def rawValue = Integer.parseInt(descMap.value, 16)
              def finalVal = Math.round(rawValue / 2)
              if (finalVal > 100) finalVal = 100
