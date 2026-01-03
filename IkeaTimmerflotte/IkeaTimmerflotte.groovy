@@ -2,8 +2,8 @@
  * IKEA TIMMERFLOTTE Matter Sensor
  *
  * Description:
- * Dedicated driver for IKEA TIMMERFLOTTE.
- * Uses Matter Helper Library for robust Endpoint targeting (Temp:01, Hum:02, Bat:00).
+ * Dedicated driver for IKEA TIMMERFLOTTE (Matter).
+ * Features: Auto-detection, robust Endpoint targeting (Temp:01, Hum:02, Bat:00), and Aniva styling.
  *
  * Author: Aniva
  * Date: 2026-01-03
@@ -13,7 +13,7 @@ import groovy.transform.Field
 import hubitat.device.HubAction
 import hubitat.device.Protocol
 
-@Field static final String driverVersion = "1.0.6"
+@Field static final String driverVersion = "1.0.7"
 
 metadata {
     definition (name: "IKEA TIMMERFLOTTE Matter Sensor", namespace: "aniva", author: "Aniva") {
@@ -27,6 +27,11 @@ metadata {
 
         attribute "_version", "string"
 
+        // PRIMARY FINGERPRINT (From user logs)
+        // Matches "TIMMERFLOTTE temp/hmd sensor" seen during pairing
+        fingerprint endpointId: "01", inClusters: "0003,001D,0402", outClusters: "", model: "TIMMERFLOTTE temp/hmd sensor", manufacturer: "IKEA of Sweden", controllerType: "MAT"
+        
+        // Secondary fingerprint (General catch-all)
         fingerprint endpointId: "01", inClusters: "0003,0004,001D,0402,0405,002F", outClusters: "", model: "TIMMERFLOTTE", manufacturer: "IKEA of Sweden"
     }
 
@@ -35,7 +40,7 @@ metadata {
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
         <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
             <div style='display: flex; align-items: center;'>
-                <img src='https://raw.githubusercontent.com/aniva/hubitat01/master/images/timmerflotte_icon.png' 
+                <img src='https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/IkeaTimmerflotte/images/timmerflotte.png' 
                      style='height: 50px; width: 50px; object-fit: contain; margin-right: 15px;' 
                      onerror="this.src='https://raw.githubusercontent.com/hubitat/HubitatPublic/master/examples/drivers/icons/sensor.png'">
                 <div>
@@ -73,14 +78,17 @@ void updated() {
 
 void initialize() {
     sendEvent(name: "_version", value: driverVersion)
-    if (logEnable) runIn(1800, logsOff)
-    configure() // Auto-configure on init
+    if (logEnable) {
+        log.info "--- Initialize: Driver v${driverVersion} ---"
+        runIn(1800, logsOff)
+    }
+    configure()
 }
 
 void configure() {
-    if (logEnable) log.info "Configuring Matter subscriptions (Clean Subscribe)..."
+    if (logEnable) log.info "--- Configure: Sending cleanSubscribe commands (v${driverVersion}) ---"
     
-    // Use the robust Matter Helper Library (Same as kkossev driver)
+    // MATTER HELPER LIBRARY (The "kkossev" method)
     List<Map<String,String>> paths = []
     
     // Endpoint 01: Temperature (0x0402)
@@ -92,11 +100,11 @@ void configure() {
     // Endpoint 00: Battery (0x002F) - Root Node
     paths.add(matter.attributePath(0x00, 0x002F, 0x000C)) 
 
-    // cleanSubscribe handles the padding and hex formatting perfectly
     String cmd = matter.cleanSubscribe(1, 0xFFFF, paths)
+    if (logEnable) log.debug "Sending Matter CMD: ${cmd}"
     sendHubCommand(new HubAction(cmd, Protocol.MATTER))
     
-    log.warn "Configuration sent. Press sensor button to wake device."
+    log.warn "Configuration sent. Please press the sensor button to wake it up."
 }
 
 void refresh() {
@@ -108,18 +116,27 @@ void refresh() {
     paths.add(matter.attributePath(0x00, 0x002F, 0x000C))
     
     String cmd = matter.readAttributes(paths)
+    if (logEnable) log.debug "Sending Matter Read CMD: ${cmd}"
     sendHubCommand(new HubAction(cmd, Protocol.MATTER))
 }
 
 void parse(String description) {
-    if (logEnable) log.debug "Parsing: ${description}"
+    // 2. Logging Raw Data
+    // Note: IP Headers are stripped by Hub OS before reaching driver. 
+    // We log the raw hex string and the parsed map.
+    if (logEnable) log.debug "RAW DATA: ${description}"
+    
     Map descMap = matter.parseDescriptionAsMap(description)
+    if (logEnable && descMap) log.debug "PARSED MAP: ${descMap}"
     
     if (descMap) {
-        Integer ep = Integer.parseInt(descMap.endpoint, 16)
-        Integer cluster = Integer.parseInt(descMap.cluster, 16)
-        Integer attrId = Integer.parseInt(descMap.attrId, 16)
+        // Parse hex strings safely
+        Integer ep = descMap.endpoint ? Integer.parseInt(descMap.endpoint, 16) : null
+        Integer cluster = descMap.cluster ? Integer.parseInt(descMap.cluster, 16) : null
+        Integer attrId = descMap.attrId ? Integer.parseInt(descMap.attrId, 16) : null
         
+        if (ep == null || cluster == null) return
+
         // Temperature (EP 01, Cluster 0402)
         if (ep == 0x01 && cluster == 0x0402 && attrId == 0x0000) {
             def rawValue = Integer.parseInt(descMap.value, 16)
@@ -129,8 +146,9 @@ void parse(String description) {
             finalVal = Math.round(finalVal * 100) / 100
             
             String unit = location.temperatureScale == "F" ? "°F" : "°C"
-            if (unit == "°F") finalVal = (finalVal * 1.8) + 32 // basic C to F conversion if needed
+            if (unit == "°F") finalVal = (finalVal * 1.8) + 32 
             
+            if (txtEnable) log.info "Temperature: ${finalVal}${unit}"
             sendEvent(name: "temperature", value: finalVal, unit: unit, descriptionText: "Temperature is ${finalVal}${unit}")
         }
         
@@ -139,6 +157,8 @@ void parse(String description) {
             def rawValue = Integer.parseInt(descMap.value, 16)
             def finalVal = (rawValue / 100.0) + (humOffset ?: 0.0)
             finalVal = Math.round(finalVal * 100) / 100
+            
+            if (txtEnable) log.info "Humidity: ${finalVal}%"
             sendEvent(name: "humidity", value: finalVal, unit: "%", descriptionText: "Humidity is ${finalVal}%")
         }
 
@@ -147,6 +167,8 @@ void parse(String description) {
              def rawValue = Integer.parseInt(descMap.value, 16)
              def finalVal = Math.round(rawValue / 2)
              if (finalVal > 100) finalVal = 100
+             
+             if (txtEnable) log.info "Battery: ${finalVal}%"
              sendEvent(name: "battery", value: finalVal, unit: "%", descriptionText: "Battery is ${finalVal}%")
         }
     }
