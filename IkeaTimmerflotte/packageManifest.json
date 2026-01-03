@@ -1,7 +1,7 @@
 {
   "packageName": "IKEA TIMMERFLOTTE Matter Sensor",
   "author": "Aniva",
-  "version": "1.0.0",
+  "version": "1.0.7",
   "minimumHEVersion": "2.3.6",
   "dateReleased": "2026-01-02",
   "drivers": [
@@ -12,5 +12,6 @@
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/IkeaTimmerflotte/IkeaTimmerflotte.groovy",
       "required": true
     }
-  ]
+  ],
+  "releaseNotes": "v1.0.7 - Initial Release of dedicated Matter driver for IKEA TIMMERFLOTTE Temp & Humidity sensor."
 }
