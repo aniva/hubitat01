@@ -3,17 +3,14 @@
  *
  * Description:
  * Dedicated driver for IKEA TIMMERFLOTTE (Matter).
- * Features: Auto-detection, robust Endpoint targeting (Temp:01, Hum:02, Bat:00), and Aniva styling.
+ * Features: Auto-detection, robust Endpoint targeting, Aniva styling.
  *
  * Author: Aniva
  * Date: 2026-01-03
  */
 
-import groovy.transform.Field
 import hubitat.device.HubAction
 import hubitat.device.Protocol
-
-@Field static final String driverVersion = "1.0.7"
 
 metadata {
     definition (name: "IKEA TIMMERFLOTTE Matter Sensor", namespace: "aniva", author: "Aniva") {
@@ -27,11 +24,10 @@ metadata {
 
         attribute "_version", "string"
 
-        // PRIMARY FINGERPRINT (From user logs)
-        // Matches "TIMMERFLOTTE temp/hmd sensor" seen during pairing
+        // PRIMARY FINGERPRINT
         fingerprint endpointId: "01", inClusters: "0003,001D,0402", outClusters: "", model: "TIMMERFLOTTE temp/hmd sensor", manufacturer: "IKEA of Sweden", controllerType: "MAT"
         
-        // Secondary fingerprint (General catch-all)
+        // SECONDARY FINGERPRINT
         fingerprint endpointId: "01", inClusters: "0003,0004,001D,0402,0405,002F", outClusters: "", model: "TIMMERFLOTTE", manufacturer: "IKEA of Sweden"
     }
 
@@ -40,16 +36,16 @@ metadata {
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
         <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
             <div style='display: flex; align-items: center;'>
-                <img src='https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/IkeaTimmerflotte/images/timmerflotte.png' 
+                <img src='https://raw.githubusercontent.com/aniva/hubitat01/master/IkeaTimmerflotte/images/timmerflotte.png' 
                      style='height: 50px; width: 50px; object-fit: contain; margin-right: 15px;' 
                      onerror="this.src='https://raw.githubusercontent.com/hubitat/HubitatPublic/master/examples/drivers/icons/sensor.png'">
                 <div>
                     <div style='font-weight: bold; font-size: 1.1em; color: #333;'>IKEA TIMMERFLOTTE</div>
-                    <div style='font-size: 0.8em; color: #888;'>Matter Sensor v${driverVersion}</div>
+                    <div style='font-size: 0.8em; color: #888;'>Matter Sensor v${driverVersion()}</div>
                 </div>
             </div>
             <div style='text-align: right; font-size: 0.8em; line-height: 1.4;'>
-                <a href='https://github.com/aniva/hubitat01' target='_blank' style='color: #0275d8; text-decoration: none;'>View on GitHub</a><br>
+                <a href='https://github.com/aniva/hubitat01/tree/master/IkeaTimmerflotte' target='_blank' style='color: #0275d8; text-decoration: none;'>View on GitHub</a><br>
                 <a href='https://paypal.me/AndreiIvanov420' target='_blank' style='color: #0275d8; text-decoration: none;'>Support Dev</a>
             </div>
         </div>"""
@@ -60,6 +56,8 @@ metadata {
         input "humOffset", "decimal", title: "Humidity Offset", defaultValue: 0.0
     }
 }
+
+def driverVersion() { return "1.0.11" }
 
 void logsOff() {
     log.warn "Debug logging disabled..."
@@ -77,34 +75,34 @@ void updated() {
 }
 
 void initialize() {
-    sendEvent(name: "_version", value: driverVersion)
-    if (logEnable) {
-        log.info "--- Initialize: Driver v${driverVersion} ---"
-        runIn(1800, logsOff)
-    }
-    configure()
+    sendEvent(name: "_version", value: driverVersion())
+    
+    // FORCE LOG: This will print regardless of logEnable settings
+    log.info "${device.displayName} initialized (Driver v${driverVersion()})"
+    
+    if (logEnable) runIn(1800, logsOff)
 }
 
 void configure() {
-    if (logEnable) log.info "--- Configure: Sending cleanSubscribe commands (v${driverVersion}) ---"
+    // Ensure version state is updated
+    initialize()
     
-    // MATTER HELPER LIBRARY (The "kkossev" method)
+    if (logEnable) log.info "--- Configure: Sending cleanSubscribe commands ---"
+    
     List<Map<String,String>> paths = []
     
-    // Endpoint 01: Temperature (0x0402)
+    // Endpoint 01: Temperature
     paths.add(matter.attributePath(0x01, 0x0402, 0x0000)) 
-    
-    // Endpoint 02: Humidity (0x0405)
+    // Endpoint 02: Humidity
     paths.add(matter.attributePath(0x02, 0x0405, 0x0000)) 
-    
-    // Endpoint 00: Battery (0x002F) - Root Node
+    // Endpoint 00: Battery
     paths.add(matter.attributePath(0x00, 0x002F, 0x000C)) 
 
     String cmd = matter.cleanSubscribe(1, 0xFFFF, paths)
-    if (logEnable) log.debug "Sending Matter CMD: ${cmd}"
+    if (logEnable) log.debug "Sending Matter Subscribe CMD: ${cmd}"
     sendHubCommand(new HubAction(cmd, Protocol.MATTER))
     
-    log.warn "Configuration sent. Please press the sensor button to wake it up."
+    log.warn "Configuration sent. Press sensor button to wake device."
 }
 
 void refresh() {
@@ -121,16 +119,13 @@ void refresh() {
 }
 
 void parse(String description) {
-    // 2. Logging Raw Data
-    // Note: IP Headers are stripped by Hub OS before reaching driver. 
-    // We log the raw hex string and the parsed map.
+    // LOG EVERYTHING: Runs before parsing to capture all incoming traffic
     if (logEnable) log.debug "RAW DATA: ${description}"
     
     Map descMap = matter.parseDescriptionAsMap(description)
     if (logEnable && descMap) log.debug "PARSED MAP: ${descMap}"
     
     if (descMap) {
-        // Parse hex strings safely
         Integer ep = descMap.endpoint ? Integer.parseInt(descMap.endpoint, 16) : null
         Integer cluster = descMap.cluster ? Integer.parseInt(descMap.cluster, 16) : null
         Integer attrId = descMap.attrId ? Integer.parseInt(descMap.attrId, 16) : null
@@ -141,7 +136,6 @@ void parse(String description) {
         if (ep == 0x01 && cluster == 0x0402 && attrId == 0x0000) {
             def rawValue = Integer.parseInt(descMap.value, 16)
             if (rawValue > 32767) rawValue -= 65536
-            
             def finalVal = (rawValue / 100.0) + (tempOffset ?: 0.0)
             finalVal = Math.round(finalVal * 100) / 100
             
