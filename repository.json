@@ -1,4 +1,3 @@
-
 {
   "author": "aniva",
   "gitHubUrl": "https://github.com/aniva/hubitat01",
@@ -34,6 +33,17 @@
       ],
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/OpenWeatherMap/packageManifest.json",
       "description": "Patched version of OpenWeatherMap-Alerts driver with fixed icon hosting."
+    },
+    {
+      "name": "IKEA TIMMERFLOTTE Matter Sensor",
+      "category": "Integrations",
+      "tags": [
+        "Matter",
+        "Sensor",
+        "IKEA"
+      ],
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/IkeaTimmerflotte/packageManifest.json",
+      "description": "Dedicated Matter driver for IKEA TIMMERFLOTTE Temp & Humidity sensor."
     }
   ]
 }

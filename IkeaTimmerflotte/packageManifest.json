@@ -1,0 +1,16 @@
+{
+  "packageName": "IKEA TIMMERFLOTTE Matter Sensor",
+  "author": "Aniva",
+  "version": "1.0.0",
+  "minimumHEVersion": "2.3.6",
+  "dateReleased": "2026-01-02",
+  "drivers": [
+    {
+      "id": "c62f84b6-71d3-4a12-9c12-321345678912",
+      "name": "IKEA TIMMERFLOTTE Matter Sensor",
+      "namespace": "aniva",
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/IkeaTimmerflotte/IkeaTimmerflotte.groovy",
+      "required": true
+    }
+  ]
+}
