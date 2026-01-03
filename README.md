@@ -62,7 +62,7 @@ A native, local driver for the **IKEA TIMMERFLOTTE** Temperature & Humidity sens
     * **Border Router Support:** Designed to bridge via standard Thread Border Routers (like DIRIGERA) using IPv6 ULA.
     * **Clean Data:** Reports precise Temperature and Relative Humidity.
     * **Auto-Discovery:** Seamless pairing with specific IKEA fingerprints to avoid "Generic Device" matching.
-    * 
+  
 ---
 
 ## ❤️ Support
