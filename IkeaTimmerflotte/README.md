@@ -55,8 +55,7 @@ To use this sensor with Hubitat, you **must pair it directly to Hubitat** using 
 ### Step 1: Generate Matter Code (IKEA App)
 1.  Open the IKEA Home smart app.
 2.  Navigate to the TIMMERFLOTTE sensor settings.
-3.  Select **"Integrations"** or **"Link to other services"** (depending on app version).
-4.  Select **Connect via QR Code**.
+3.  Select **Connect via QR Code**.
 
 <img src="images/matter_setup_code_ikea_app_example.png" alt="IKEA App Setup" width="20%">
 
