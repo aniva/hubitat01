@@ -52,6 +52,17 @@ A cloud integration driver for the **WiMeter** energy monitoring solution.
 
 * **Features:** Bridges WiMeter cloud data into Hubitat for energy automation and dashboarding.
 
+### 4. [IKEA TIMMERFLOTTE Matter Sensor](./IkeaTimmerflotte)
+**Status:** Initial Release (v0.1.0)
+
+A native, local driver for the **IKEA TIMMERFLOTTE** Temperature & Humidity sensor using **Matter over Thread**.
+
+* **Features:**
+    * **Matter Native:** Built using Hubitat's `matter` class for standard compliance and speed.
+    * **Border Router Support:** Designed to bridge via standard Thread Border Routers (like DIRIGERA) using IPv6 ULA.
+    * **Clean Data:** Reports precise Temperature and Relative Humidity.
+    * **Auto-Discovery:** Seamless pairing with specific IKEA fingerprints to avoid "Generic Device" matching.
+    * 
 ---
 
 ## ❤️ Support
