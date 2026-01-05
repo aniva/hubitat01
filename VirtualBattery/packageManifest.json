@@ -1,0 +1,20 @@
+{
+  "packageName": "Virtual Mutable Battery",
+  "author": "Aniva",
+  "version": "1.0.0",
+  "minimumHEVersion": "2.2.0",
+  "dateReleased": "2026-01-05",
+  "releaseNotes": "Initial Release: Virtual battery driver with Actuator capability for Rule Machine integration.",
+  "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
+  "documentationLink": "https://github.com/aniva/hubitat01/blob/master/VirtualBattery/README.md",
+  "payPalUrl": "https://paypal.me/AndreiIvanov420",
+  "drivers": [
+    {
+      "id": "94c86364-0722-4416-9051-7890255e7146",
+      "name": "Virtual Mutable Battery",
+      "namespace": "aniva",
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/VirtualBattery/VirtualBattery.groovy",
+      "required": true
+    }
+  ]
+}
