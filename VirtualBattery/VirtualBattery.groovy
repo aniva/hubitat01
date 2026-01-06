@@ -18,19 +18,23 @@ metadata {
         capability "Actuator"      // Critical: Makes custom commands visible in Rule Machine
         capability "Battery"       // Standard: Allows use with standard Dashboard Battery Tiles
         capability "Sensor"
+        capability "Initialize"    // <--- ADDED: Adds "Initialize" button to device page
         
         // Custom command to allow Rule Machine to write the battery level
         command "setBattery", [[name: "level", type: "NUMBER", description: "Battery Level (0-100)"]]
     }
 
-    preferences {
+preferences {
         // --- DRIVER INFO HEADER (Aniva Standard) ---
+        // Icon: Embedded SVG (Material Design Battery Full - Green #4CAF50)
+        // Fixed: Added explicit width/height attributes to SVG to prevent collapsing
+        String iconSvg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjQ4cHgiIGhlaWdodD0iNDhweCI+PHBhdGggZD0iTTAgMGgyNHYyNEgweiIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0xNS42NyA0SDE0VjJoLTR2Mkg4LjMzQzcuNiA0IDcgNC42IDcgNS4zM3YxNS4zM0M3IDIxLjQgNy42IDIyIDguMzMgMjJoNy4zM2MuNzQgMCAxLjM0LS42IDEuMzQtMS4zM1Y1LjMzQzE3IDQuNiAxNi40IDQgMTUuNjcgNHoiIGZpbGw9IiM0Q0FGNTAiLz48L3N2Zz4="
+
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
         <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
             <div style='display: flex; align-items: center;'>
-                <img src='https://raw.githubusercontent.com/hubitat/HubitatPublic/master/examples/drivers/icons/battery.png' 
-                     style='height: 50px; width: 50px; object-fit: contain; margin-right: 15px;'
-                     onerror="this.src='https://raw.githubusercontent.com/hubitat/HubitatPublic/master/examples/drivers/icons/sensor.png'">
+                <img src='${iconSvg}' 
+                     style='height: 50px; width: 50px; min-width: 50px; object-fit: contain; margin-right: 15px;'>
                 <div>
                     <div style='font-weight: bold; font-size: 1.1em; color: #333;'>Virtual Mutable Battery</div>
                     <div style='font-size: 0.8em; color: #888;'>Driver v${driverVersion()}</div>
@@ -54,7 +58,6 @@ def driverVersion() { return DRIVER_VERSION }
 
 void installed() {
     logInfo("Installed")
-    // Initialize with a safe default so the tile isn't empty
     setBattery(100)
     initialize()
 }
@@ -78,7 +81,6 @@ void updated() {
 // --- Custom Commands ---
 
 void setBattery(level) {
-    // Basic validation to keep tiles happy
     Integer val = level as Integer
     if (val < 0) val = 0
     if (val > 100) val = 100

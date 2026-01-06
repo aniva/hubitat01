@@ -45,6 +45,18 @@
       ],
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/IkeaTimmerflotte/packageManifest.json",
       "description": "Dedicated Matter driver for IKEA TIMMERFLOTTE Temp & Humidity sensor."
+    },
+    {
+      "name": "Virtual Mutable Battery",
+      "category": "Utilities",
+      "tags": [
+        "Battery",
+        "Virtual",
+        "Rule Machine",
+        "Dashboard"
+      ],
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/VirtualBattery/packageManifest.json",
+      "description": "Virtual battery driver with Actuator capability for Rule Machine integration."
     }
   ]
 }

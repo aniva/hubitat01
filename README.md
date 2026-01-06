@@ -62,7 +62,16 @@ A native, local driver for the **IKEA TIMMERFLOTTE** Temperature & Humidity sens
     * **Border Router Support:** Designed to bridge via standard Thread Border Routers (like DIRIGERA) using IPv6 ULA.
     * **Clean Data:** Reports precise Temperature and Relative Humidity.
     * **Auto-Discovery:** Seamless pairing with specific IKEA fingerprints to avoid "Generic Device" matching.
-  
+
+### 5. [Virtual Mutable Battery](./VirtualBattery)
+**Status:** Initial Release (v1.0.0)
+
+A specialized virtual driver that bridges the gap between devices reporting vague battery status (e.g., "OK", "Low") and standard percentage-based dashboard tiles.
+
+* **Features:**
+    * **Rule Machine Ready:** Exposes the `Actuator` capability, allowing rules to write battery levels via the custom `setBattery()` command.
+    * **Proxy Logic:** Perfect for Blink cameras or cloud devices that don't report percentages—translates "Low" text status into a visual "15%" red icon.
+    * **Dashboard Friendly:** Enables standard Green/Red battery tiles for otherwise unsupported devices.  
 ---
 
 ## ❤️ Support
