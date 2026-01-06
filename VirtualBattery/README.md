@@ -31,9 +31,9 @@ Many cloud integrations (like Blink cameras or older Zigbee devices) only report
 ## Configuration
 After installing, ensure your virtual device is using the **Virtual Mutable Battery** driver type. This ensures the "Actuator" capability is present so Rule Machine can see it.
 
-'''html
+```html
 <img src="images/device_type_selection_example.png" alt="Device Type Selection" width="600">
-'''
+```
 
 ## How to Use (Rule Machine)
 
@@ -45,9 +45,9 @@ To update this battery from a rule, you must select the **Actuator** capability 
 **Example Logic:**
 In the example below, we check if the camera reports "Low" (False). If so, we force the Virtual Battery to `15%` (Red tile). Otherwise, we set it to `100%` (Green tile).
 
-'''html
+```html
 <img src="images/rule_engine_example.png" alt="Rule Machine Logic Example" width="800">
-'''
+```
 
 ### Step-by-Step Rule Action:
 1.  Select **"Set Variable, Mode or File, Run Custom Action"**.
