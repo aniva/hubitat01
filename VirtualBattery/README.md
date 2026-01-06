@@ -59,6 +59,7 @@ In the example below, we check if the camera reports "Low" (False). If so, we fo
 7.  Value: `100` (for Good) or `15` (for Low).
 
 **Visual Guide for Step 3:**
+
 <img src="images/action_actuator_example.png" alt="Selecting Actuator Capability" width="600">
 
 ## Support
