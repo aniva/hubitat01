@@ -1,42 +1,37 @@
-# Virtual Battery for Hubitat
+# GEMINI.md - Project Context & Coding Standards
 
-Driver designed to be using in the Hubitat's Rule Machine to set this virtual driver battery level based on that device attribute value. For examle source device can report battery status as "high" or "ok" or "good" when battery is high and then report "low" and "critical" when battery is depelted, and this can be tranlated to levels set to this virtual battery, e.g. "good" would set to 100%, low would be set to 10%. This wil allow displaying battery tile on the HE dashboard that will stay green while battery is good and will turn red as soon as device reports low battery status. Essentially this enables stanard battery tile for hubitat for devices that do not support battery status reporting in percentage and or do not expose battery state propely.
+**Project:** Virtual Mutable Battery Driver
+**Platform:** Hubitat Elevation
+**Author:** Aniva
+**License:** Apache 2.0
+**Support:** [PayPal](https://paypal.me/AndreiIvanov420) | [GitHub](https://github.com/aniva)
 
-## Features
-* **Aniva Standard Styling:** Custom HTML header with version tracking and links.
+## 1. Project Overview: Virtual Mutable Battery
+This driver is designed to bridge devices that report battery status vaguely (e.g., "High", "OK", "Low") into a standard percentage-based format that Hubitat dashboards can understand.
 
-## Architecture & Network Requirements
+**Problem Solved:** Many cameras or cloud devices do not report a numeric battery level (0-100%), preventing them from using standard Hubitat battery tiles.
+**Solution:** This virtual driver acts as a proxy. Rule Machine logic translates the source device's status (e.g., "Low") into a numeric value (e.g., "15%") and sets it on this driver using the `setBattery()` command. This allows the use of standard, color-changing battery tiles on dashboards.
 
-TBD
+### Key Features
+* **Rule Machine Compatible:** Explicitly exposes the `Actuator` capability so it appears in Rule Machine action lists.
+* **Custom Command:** `setBattery(level)` allows direct percentage assignment.
+* **Aniva Standard Styling:** Includes the standardized HTML header and version tracking.
 
-## Installation
-
-1.  **Hubitat Package Manager (HPM):** Search for "aniva", this will bring all drivers in aniva's namespace and then select Virtual Battery for installation
-
-2.  **Manual Install:**
-    * Go to **Drivers Code** in Hubitat.
-    * Click **New Driver**.
-    * Paste the content of `VirtualBattery.groovy`.
-    * Click **Save**.
-
-## 3. Naming & Attribute Standards (STRICT)
-State variable naming should use **camelCase** to align with Hubitat standards. 
-This diver should use standard generic attribute name "battery" and setBattery(level) that can be used to set level (in %) from rule engine using generic Actuator device
-')
-# 2. Coding & Driver Standards (Aniva Standard)
+## 2. Coding & Driver Standards (Aniva Standard)
 
 All drivers must adhere to the **"Aniva Standard Pattern"** for consistency in updates, debugging, and UI presentation.
 
-## Versioning
+### A. Naming & Attribute Standards (STRICT)
+* **Variable Naming:** Use **camelCase** for all state variables and methods.
+* **Capabilities:** Must include `Actuator` to ensuring visibility in Rule Machine.
+* **Attributes:** Use standard system attributes where possible (e.g., `battery`).
 
-Versioning should be handled by defining a static field @Field static final String DRIVER_VERSION at the top of the code for easy readability. This version string is then written to state.driverVersion inside the initialize() method, ensuring that the installed version is always trackable within the device's state for debugging or upgrade logic. Finally, the driver logs this version number as an info message upon initialization (logInfo), while standard debug logging (logEnable) is designed to automatically disable itself after 30 minutes to maintain hub performance.
-
-### A. The "Version & Identity" Pattern
+### B. The "Version & Identity" Pattern
 Every driver must implement the following 5 strict requirements:
 
 1.  **Static Variable:** Define the version in a static field at the top of the script.
-2.  **Accessor Function:** Create a `driverVersion()` function that returns this static field (allows dynamic insertion into Strings/HTML).
-3.  **State Tracking:** In `initialize()`, write this version to `state.driverVersion` (for update tracking).
+2.  **Accessor Function:** Create a `driverVersion()` function that returns this static field.
+3.  **State Tracking:** In `initialize()`, write this version to `state.driverVersion`.
 4.  **Logging:** Log the version immediately upon initialization.
 5.  **UI Header:** Display the version dynamically inside a styled HTML paragraph block in `preferences`.
 
@@ -50,12 +45,12 @@ import groovy.transform.Field
 
 metadata {
     definition (name: "My Device Name", namespace: "aniva", author: "Aniva") {
-        // ... capabilities ...
+        capability "Actuator" // Critical for Rule Machine visibility
+        // ... other capabilities ...
     }
 
     preferences {
         // 5. UI Header (Standard Paragraph Block)
-        // Must use ${driverVersion()} to dynamically show the version
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
         <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
             <div style='display: flex; align-items: center;'>
@@ -83,7 +78,7 @@ def driverVersion() { return DRIVER_VERSION }
 void initialize() {
     // 3. State Tracking
     state.driverVersion = driverVersion()
-    sendEvent(name: "_version", value: driverVersion()) // Optional: for dashboard display
+    sendEvent(name: "_version", value: driverVersion())
 
     // 4. Log upon Init
     logInfo("Initializing ${device.displayName} (Driver v${driverVersion()})")
@@ -102,13 +97,14 @@ void logsOff() {
 }
 ```
 
-## Support
+## 3. Installation Guide
 
-If you find this driver useful, consider supporting the development:
+1.  **Hubitat Package Manager (HPM):**
+    * Search for "Aniva" in the HPM store.
+    * Select **"Virtual Mutable Battery"** for installation.
 
-* [PayPal Support](https://paypal.me/AndreiIvanov420)
-* [GitHub Repository](https://github.com/aniva)
-
----
-**Author:** Aniva
-**License:** Apache 2.0
+2.  **Manual Install:**
+    * Go to **Drivers Code** in Hubitat.
+    * Click **New Driver**.
+    * Paste the content of `VirtualBattery.groovy`.
+    * Click **Save**.

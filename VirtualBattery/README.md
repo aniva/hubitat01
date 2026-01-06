@@ -58,6 +58,9 @@ In the example below, we check if the camera reports "Low" (False). If so, we fo
 6.  Parameter Type: **Number**.
 7.  Value: `100` (for Good) or `15` (for Low).
 
+**Visual Guide for Step 3:**
+<img src="images/action_actuator_example.png" alt="Selecting Actuator Capability" width="600">
+
 ## Support
 
 If you find this driver useful, consider supporting the development:
