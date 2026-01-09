@@ -26,29 +26,29 @@ When you pair an IKEA PARASOLL sensor to the IKEA DIRIGERA hub and then bridge i
 2.  In Hubitat, go to **Drivers Code** -> **New Driver**.
 3.  Paste and Save.
 
-## How to Add Device to Hubitat (Pairing via DIRIGERA)
+## How to Add Device to Hubitat
 
-Since this device uses the **DIRIGERA** hub as a bridge, you do not pair the sensor directly to Hubitat. You pair the *Hub* to Hubitat.
+**Important:** You do not pair the PARASOLL sensor directly to Hubitat. You pair it to the **IKEA DIRIGERA Hub**, and the Hub passes it to Hubitat via Matter.
 
-### Step 1: Prepare IKEA DIRIGERA
-1.  Open the **IKEA Home Smart** app on your phone.
-2.  Ensure your **PARASOLL** sensor is already paired to the Dirigera hub and working in the IKEA app.
-3.  Go to **Settings** (User Profile icon) -> **Integrations**.
-4.  Select **Matter Bridge**.
-5.  Wait for the app to generate a **QR Code** (or a pairing code).
+### Step 1: Pair Sensor to IKEA DIRIGERA
+1.  Open the **IKEA Home Smart** app.
+2.  Follow the standard instructions to add the PARASOLL sensor to your IKEA system.
 
-### Step 2: Add to Hubitat
-1.  Open your **Hubitat Web Interface**.
-2.  Go to **Devices** -> **Add Device**.
-3.  Select **Matter**.
-4.  Choose **Scan QR Code** (or enter the manual code).
-5.  Scan the code displayed in the IKEA app.
-    * *Note: This will bring ALL eligible Zigbee devices from your Dirigera hub into Hubitat at once.*
+### Step 2: Sync with Hubitat
+* **Scenario A: Your DIRIGERA Hub is ALREADY connected to Hubitat via Matter.**
+    * The new sensor should appear in your Hubitat "Devices" list automatically within a minute.
+    * *Troubleshooting:* If it doesn't appear, go to your **Matter Bridge** device in Hubitat (the device representing the Dirigera Hub) and click **Refresh** or **Initialize**.
+
+* **Scenario B: This is your FIRST time connecting IKEA to Hubitat.**
+    1.  In the IKEA App, go to **User Profile** (icon) -> **Integrations** -> **Matter Bridge**.
+    2.  Enable the bridge to generate a **QR Code**.
+    3.  In Hubitat, go to **Devices** -> **Add Device** -> **Matter**.
+    4.  Scan the IKEA QR code. This will add the Hub and ALL your Zigbee devices (including the Parasoll) to Hubitat at once.
 
 ### Step 3: Assign the Driver
 Hubitat usually selects a "Generic Matter Contact Sensor" driver by default. To use this custom driver:
 
-1.  Go to the **Device Page** of your new Parasoll sensor.
+1.  Go to the **Device Page** of your new Parasoll sensor in Hubitat.
 2.  Scroll down to **Device Information**.
 3.  Under **Type**, search for and select: **IKEA PARASOLL Matter Sensor** (by Aniva).
 4.  Click **Save Device**.
