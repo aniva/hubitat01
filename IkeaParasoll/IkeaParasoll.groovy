@@ -26,23 +26,21 @@ metadata {
         fingerprint deviceId: "0015", vendor: "IKEA of Sweden", model: "PARASOLL Door/Window Sensor", deviceJoinName: "IKEA PARASOLL"
     }
 
-    preferences {
+preferences {
         // --- DRIVER INFO HEADER (Aniva Standard) ---
-        // Icon: Embedded SVG (Door Sensor - Blue/Grey style)
-        String iconSvg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjQ4cHgiIGhlaWdodD0iNDhweCI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEydjhoNHYyaDEydi0yaDR2LThjMC01LjUyLTQuNDgtMTAtMTAtMTB6bTAgMThINnYtOGMwLTMuMzEgMi42OS02IDYtNnMgNiAyLjY5IDYgNnY4aC02eiIgZmlsbD0iIzYwN0Q4QiIvPjxwYXRoIGQ9Ik0wIDBoMjR2MjRIMHoiIGZpbGw9Im5vbmUiLz48L3N2Zz4="
-
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
         <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
             <div style='display: flex; align-items: center;'>
-                <img src='${iconSvg}' 
-                     style='height: 50px; width: 50px; min-width: 50px; object-fit: contain; margin-right: 15px;'>
+                <img src='https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/IkeaParasoll/images/ikeaparasoll.png' 
+                     style='height: 50px; width: 50px; min-width: 50px; object-fit: contain; margin-right: 15px;'
+                     onerror="this.src='https://raw.githubusercontent.com/hubitat/HubitatPublic/master/examples/drivers/icons/contact-sensor.png'">
                 <div>
                     <div style='font-weight: bold; font-size: 1.1em; color: #333;'>IKEA PARASOLL</div>
                     <div style='font-size: 0.8em; color: #888;'>Matter Sensor v${driverVersion()}</div>
                 </div>
             </div>
             <div style='text-align: right; font-size: 0.8em; line-height: 1.4;'>
-                <a href='https://github.com/aniva/hubitat01' target='_blank' style='color: #0275d8; text-decoration: none;'>View on GitHub</a><br>
+                <a href='https://github.com/aniva/hubitat01/tree/master/IkeaParasoll' target='_blank' style='color: #0275d8; text-decoration: none;'>View on GitHub</a><br>
                 <a href='https://paypal.me/AndreiIvanov420' target='_blank' style='color: #0275d8; text-decoration: none;'>Support Dev</a>
             </div>
         </div>"""
