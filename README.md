@@ -76,10 +76,10 @@ A specialized virtual driver that bridges the gap between devices reporting vagu
 ### 6. [IKEA PARASOLL Matter Sensor](./IkeaParasoll)
 **Status:** Initial Release (v1.0.0)
 
-A native, local driver for the **IKEA PARASOLL** Door/Window sensor when bridged via the **IKEA DIRIGERA** hub using **Matter**.
+A native, local driver for the **IKEA PARASOLL** Door/Window Zigbee sensor when bridged via the **IKEA DIRIGERA** hub using **Matter**.
 
 * **Features:**
-    * **Matter Native:** Built using Hubitat's `matter` class for local execution.
+    * **Matter Native:** Built using Hubitat's `matter` class for local execution, to work with Zigbee device paired with IKEA DIRIGERA.
     * **Battery Precision:** Automatically converts Matter's raw 0-200 scale into a standard 0-100% percentage.
     * **Logic Reversal:** Includes a preference to reverse "Open/Close" logic for specific mounting needs.
     * **Auto-Discovery:** Fingerprints for automatic detection upon pairing.
