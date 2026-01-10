@@ -1,3 +1,5 @@
+
+
 # GEMINI.md - Project Context & Coding Standards
 
 **Project:** Hubitat Elevation Driver for IKEA PARASOLL Zigbee door sensor paired with IKEA DIRIGERA Hub

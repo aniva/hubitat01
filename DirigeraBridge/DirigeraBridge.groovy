@@ -2,15 +2,18 @@
  * IKEA DIRIGERA Bridge
  *
  * Description: Custom Matter Bridge driver that bypasses standard filters.
- * Fixed: Handles both 'endpoint' and 'endpointId' keys from map.
+ * Features:
+ * - Routes raw Matter events to custom child drivers
+ * - Safe Parse protection against silent crashes
+ * - Handles Ikea's specific Integer/Hex clusters
  *
  * Author: Aniva
- * Version: 1.0.9
+ * Version: 1.1.0
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "1.0.9"
+@Field static final String DRIVER_VERSION = "1.1.0"
 
 metadata {
     definition (name: "IKEA DIRIGERA Bridge", namespace: "aniva", author: "Aniva") {
@@ -48,13 +51,15 @@ void installed() { initialize() }
 void updated() { initialize() }
 
 void initialize() {
-    log.warn "ANIVA BRIDGE: Initializing Driver Version ${DRIVER_VERSION}"
-    if (logEnable) log.debug "ANIVA BRIDGE: Debug Logging is ENABLED."
+    logInfo("Initializing Driver (v${DRIVER_VERSION})")
     
     state.driverVersion = DRIVER_VERSION
     if (device.currentValue("_version") != DRIVER_VERSION) {
         sendEvent(name: "_version", value: DRIVER_VERSION)
     }
+    
+    // Auto-disable debug logging after 30 minutes
+    if (logEnable) runIn(1800, logsOff)
 }
 
 void configure() {
@@ -68,36 +73,25 @@ void parse(String description) {
     try {
         Map descMap = matter.parseDescriptionAsMap(description)
         
-        if (logEnable) log.debug "STEP 1 - Raw Map: ${descMap}"
-    
-        // FIX: Check for 'endpoint' OR 'endpointId'
+        // Fix: Handles both 'endpoint' and 'endpointId'
         String endpointId = descMap.endpointId ?: descMap.endpoint
         
-        if (!endpointId) {
-             // System messages often have no endpoint, so we skip them gracefully
-             return 
-        }
-    
-        // STEP 2: Calculate DNI
+        if (!endpointId) return // Skip system messages
+
         String childDni = "${device.deviceNetworkId}-${endpointId}"
         def childDevice = getChildDevice(childDni)
         
         if (childDevice) {
-            if (logEnable) log.debug "STEP 3 - Found Child: ${childDevice.displayName}"
-            
             List events = convertToEvents(descMap)
             
             if (events && events.size() > 0) {
-                if (logEnable) log.debug "STEP 4 - Dispatching to Child: ${events}"
+                if (logEnable) log.debug "Dispatching to ${childDevice.displayName}: ${events}"
                 childDevice.parse(events)
-            } else {
-                if (logEnable) log.warn "STEP 4 - Failed: No events generated (Cluster: ${descMap.clusterInt})"
             }
+            // Silent drop if no relevant events found (reduces log noise)
         } else {
-            if (logEnable) {
-                log.warn "STEP 3 - FAIL: Child NOT found!"
-                log.warn "   > Looking for DNI: '${childDni}'"
-            }
+            // Warn only if we receive data for an unknown child (helps with pairing new devices)
+            if (logEnable) log.warn "Bridge received data for unknown child: ${childDni}"
         }
     } catch (e) {
         log.error "FATAL CRASH IN PARSE: ${e}"
@@ -128,7 +122,7 @@ List convertToEvents(Map map) {
 }
 
 void refresh() {
-    log.info "Bridge Refreshing..."
+    logInfo("Refreshing Bridge...")
 }
 
 void componentRefresh(def childDevice) {
@@ -149,4 +143,15 @@ void componentRefresh(def childDevice) {
     } catch (e) {
         log.error "Error in componentRefresh: ${e}"
     }
+}
+
+// --- HELPERS ---
+
+void logsOff() {
+    device.updateSetting("logEnable", [value: "false", type: "bool"])
+    log.info "${device.displayName}: Debug logging auto-disabled"
+}
+
+void logInfo(String msg) {
+    if (txtEnable) log.info "${device.displayName}: ${msg}"
 }

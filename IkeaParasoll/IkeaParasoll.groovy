@@ -1,20 +1,21 @@
 /**
- * IKEA PARASOLL Component Sensor
+ * IKEA PARASOLL Zigbee Sensor (Component)
  *
  * Device: IKEA PARASOLL (Child Device of Matter Bridge)
- * Type: Component Driver
+ * Description: Component driver for IKEA Zigbee sensors accessed via Dirigera Matter Bridge.
+ * Includes battery correction (/2) and logic reversal.
  *
  * Author: Aniva
- * License: Apache 2.0
- * Support: https://paypal.me/AndreiIvanov420
+ * Version: 2.2.0
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "2.1.0"
+@Field static final String DRIVER_VERSION = "2.2.0"
 
 metadata {
-    definition (name: "IKEA PARASOLL Matter Sensor", namespace: "aniva", author: "Aniva") {
+    // Renamed as requested to reflect physical hardware
+    definition (name: "IKEA PARASOLL Zigbee Sensor", namespace: "aniva", author: "Aniva") {
         capability "Configuration"
         capability "Battery"
         capability "ContactSensor"
@@ -32,7 +33,7 @@ metadata {
                      onerror="this.src='https://raw.githubusercontent.com/hubitat/HubitatPublic/master/examples/drivers/icons/contact-sensor.png'">
                 <div>
                     <div style='font-weight: bold; font-size: 1.1em; color: #333;'>IKEA PARASOLL</div>
-                    <div style='font-size: 0.8em; color: #888;'>Component Driver v${driverVersion()}</div>
+                    <div style='font-size: 0.8em; color: #888;'>Zigbee Component v${driverVersion()}</div>
                 </div>
             </div>
             <div style='text-align: right; font-size: 0.8em; line-height: 1.4;'>
@@ -53,6 +54,7 @@ void installed() { initialize() }
 
 void initialize() {
     sendEvent(name: "_version", value: driverVersion())
+    logInfo("Initializing (v${driverVersion()})")
     if (logEnable) runIn(1800, logsOff)
 }
 
@@ -60,24 +62,22 @@ void updated() {
     initialize() 
 }
 
-// --- COMPONENT PARSING ---
-// The Bridge calls this method to push updates to us.
-// We use 'def' to accept any data type (List or Map) to avoid errors.
+// --- COMPONENT PARSING (SAFE MODE) ---
 def parse(description) {
-    if (logEnable) log.debug "Received from Bridge: ${description}"
-    
-    // The bridge usually sends a List of Maps [[name:contact, value:open], ...]
-    if (description instanceof List) {
-        description.each { event ->
-            handleBridgeEvent(event)
+    try {
+        if (logEnable) log.debug "Received from Bridge: ${description}"
+        
+        if (description instanceof List) {
+            description.each { event -> handleBridgeEvent(event) }
         }
-    }
-    // Sometimes it might send a single Map
-    else if (description instanceof Map) {
-        handleBridgeEvent(description)
-    }
-    else {
-        if (logEnable) log.warn "Unknown data format received: ${description}"
+        else if (description instanceof Map) {
+            handleBridgeEvent(description)
+        }
+        else {
+            if (logEnable) log.warn "Ignored unknown data format: ${description}"
+        }
+    } catch (e) {
+        log.error "FATAL CRASH IN PARSE: ${e}"
     }
 }
 
@@ -86,18 +86,17 @@ void handleBridgeEvent(Map event) {
     def value = event.value
     String descriptionText = event.descriptionText ?: "${name} is ${value}"
     
-    // 1. BATTERY FIX (Divide by 2)
+    // 1. BATTERY FIX (Divide by 2 for IKEA Matter)
     if (name == "battery") {
         int raw = value as Integer
         int percent = (int)(raw / 2)
         if (percent > 100) percent = 100
         if (percent < 0) percent = 0
         
-        // Only update if changed or forced
         sendEvent(name: "battery", value: percent, unit: "%", descriptionText: "Battery is ${percent}%")
-        if (txtEnable) log.info "Battery is ${percent}% (Raw from Bridge: ${raw})"
+        if (txtEnable) log.info "Battery is ${percent}% (Raw: ${raw})"
     }
-    // 2. CONTACT LOGIC (Reverse if needed)
+    // 2. CONTACT LOGIC (Optional Reversal)
     else if (name == "contact") {
         String state = value
         
@@ -109,7 +108,7 @@ void handleBridgeEvent(Map event) {
         sendEvent(name: "contact", value: state, descriptionText: descriptionText)
         if (txtEnable) log.info "${descriptionText}"
     }
-    // 3. PASS EVERYTHING ELSE (Check-in, etc)
+    // 3. PASS-THROUGH
     else {
         sendEvent(event)
     }
@@ -118,8 +117,7 @@ void handleBridgeEvent(Map event) {
 // --- COMMANDS ---
 
 void refresh() {
-    // Component drivers ask the Parent to refresh them
-    logDebug("Requesting Refresh from Parent Bridge...")
+    if (logEnable) log.debug "Requesting Refresh from Parent Bridge..."
     try {
         parent?.componentRefresh(this.device)
     } catch (e) {
