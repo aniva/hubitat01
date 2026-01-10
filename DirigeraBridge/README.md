@@ -8,9 +8,17 @@
 This driver acts as a custom "Matter Bridge" for the IKEA DIRIGERA Hub. By default, Hubitat's generic Matter driver filters out data from unknown devices and provides limited telemetry.
 
 **This driver allows you to:**
-* Bypass standard Hubitat filters to discover "Unsupported" IKEA devices (like the PARASOLL sensor).
+* Bypass standard Hubitat filters to discover "Unsupported" IKEA devices.
 * Correctly decode IKEA's specific Matter attributes (fixing 0-200 battery scales, etc.).
 * Route raw events to custom child drivers for full functionality.
+
+---
+
+## Supported Devices
+The following devices have dedicated "Component Drivers" optimized for this bridge:
+
+* **[IKEA PARASOLL Zigbee Sensor](../IkeaParasoll/README.md)** (Door/Window Sensor)
+* *More IKEA Zigbee devices will be added in future updates...*
 
 ---
 
@@ -74,4 +82,6 @@ Once the Bridge is active:
 1.  Add your sensors (e.g., Parasoll) to the IKEA App.
 2.  Go to the **IKEA DIRIGERA Bridge** device in Hubitat.
 3.  Click **Refresh**.
-4.  The new sensors will appear automatically in your Hubitat **Devices** list.
+4.  The new sensors will appear automatically in your Hubitat **Devices** list as child devices of the Bridge.
+
+<br><img src="images/dirigera_parent_and_parasoll_child_example.png">
