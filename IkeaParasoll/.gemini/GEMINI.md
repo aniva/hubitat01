@@ -1,37 +1,44 @@
 # GEMINI.md - Project Context & Coding Standards
 
-**Project:** Hubitat Elevation Driver for IKEA PARASOLL Zigbee door sensor paired with IKEA DIRIGERA Hub
+**Project:** Hubitat Component Driver for IKEA PARASOLL Sensor
 **Platform:** Hubitat Elevation
+**Parent Driver:** IKEA DIRIGERA Bridge
 **Author:** Aniva
 **License:** Apache 2.0
 **Support:** [PayPal](https://paypal.me/AndreiIvanov420) | [GitHub](https://github.com/aniva)
 
-## 1. Project Overview: Ikea PARASOLL Matter to Zigbee driver 
+## 1. Project Overview
 
-TBD
+This project provides the **Component Child Driver** for the IKEA PARASOLL Door/Window sensor. It is designed to work exclusively as a child device of the **IKEA DIRIGERA Bridge**.
 
-### Key Features
+**The Problem:**
+When paired via Matter, IKEA sensors send raw data that generic drivers often misinterpret. Specifically, the battery reports use a 0-200 scale (where 200 = 100%), and magnetic contact logic can vary based on mounting.
 
-TBD
-
-* **Aniva Standard Styling:** Includes the standardized HTML header and version tracking.
+**The Solution:**
+This driver acts as a "Business Logic Layer" for the raw data passed down by the Bridge:
+1.  **Passive Reception:** It does not "poll" the device directly; it waits for `parse(List events)` calls from the Parent Bridge.
+2.  **Battery Normalization:** It automatically divides incoming battery values by 2.
+3.  **Logic Control:** It offers a user preference to reverse Open/Close states without physical remounting.
 
 ## 2. Coding & Driver Standards (Aniva Standard)
 
-All drivers must adhere to the **"Aniva Standard Pattern"** for consistency in updates, debugging, and UI presentation.
+All drivers in this project must adhere to the **"Aniva Standard Pattern"** for consistency, reliability, and ease of debugging.
 
-### A. Naming & Attribute Standards (STRICT)
+### A. AI Generation Rules (Markdown)
+* **Code Blocks:** When generating Markdown files (like README.md) that contain code examples, **never** use triple backticks inside the block. Substitute internal code fences with **triple single quotes (`'''`)** to prevent rendering errors.
+
+### B. Naming & Attribute Standards
 * **Variable Naming:** Use **camelCase** for all state variables and methods.
-* **Capabilities:** Must include `Actuator` to ensuring visibility in Rule Machine.
-* **Attributes:** Use standard system attributes where possible (e.g., `battery`).
+* **Capabilities:** Must include `Actuator` to ensure visibility in Rule Machine.
+* **Attributes:** Use standard system attributes (e.g., `battery`, `contact`) wherever possible.
 
-### B. The "Version & Identity" Pattern
-Every driver must implement the following 5 strict requirements:
+### C. The "Version & Identity" Pattern
+Every driver must implement these 5 strict requirements to ensure users can track updates:
 
-1.  **Static Variable:** Define the version in a static field at the top of the script.
-2.  **Accessor Function:** Create a `driverVersion()` function that returns this static field.
-3.  **State Tracking:** In `initialize()`, write this version to `state.driverVersion`.
-4.  **Logging:** Log the version immediately upon initialization.
+1.  **Static Variable:** Define the version in a `@Field static final String` at the top.
+2.  **Accessor Function:** Create a `driverVersion()` function returning this field.
+3.  **State Tracking:** In `initialize()`, write this version to `_version` event.
+4.  **Logging:** Log the version immediately upon initialization (using `logInfo`).
 5.  **UI Header:** Display the version dynamically inside a styled HTML paragraph block in `preferences`.
 
 **Standard Implementation Template:**
@@ -39,71 +46,59 @@ Every driver must implement the following 5 strict requirements:
 ```groovy
 import groovy.transform.Field
 
-// 1. Static Variable
-@Field static final String DRIVER_VERSION = "1.0.0"
+@Field static final String DRIVER_VERSION = "2.2.0"
 
 metadata {
-    definition (name: "My Device Name", namespace: "aniva", author: "Aniva") {
-        capability "Actuator" // Critical for Rule Machine visibility
-        // ... other capabilities ...
+    definition (name: "IKEA PARASOLL Zigbee Sensor", namespace: "aniva", author: "Aniva") {
+        capability "Initialize"
+        capability "Actuator"
+        capability "ContactSensor"
     }
 
     preferences {
-        // 5. UI Header (Standard Paragraph Block)
+        // Aniva Standard Header
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
-        <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
-            <div style='display: flex; align-items: center;'>
-                <img src='https://raw.githubusercontent.com/aniva/hubitat01/master/MyProject/icon.png' 
-                     style='height: 50px; width: 50px; object-fit: contain; margin-right: 15px;'>
-                <div>
-                    <div style='font-weight: bold; font-size: 1.1em; color: #333;'>DEVICE NAME</div>
-                    <div style='font-size: 0.8em; color: #888;'>Driver v${driverVersion()}</div>
-                </div>
-            </div>
-            <div style='text-align: right; font-size: 0.8em; line-height: 1.4;'>
-                <a href='https://github.com/aniva/hubitat01' target='_blank' style='color: #0275d8; text-decoration: none;'>View on GitHub</a><br>
-                <a href='https://paypal.me/AndreiIvanov420' target='_blank' style='color: #0275d8; text-decoration: none;'>Support Dev</a>
-            </div>
+        <div style='display: flex; align-items: center;...'>
+            ... (Standard HTML Block with Logo & Links) ...
+            <div style='font-size: 0.8em; color: #888;'>Component v${DRIVER_VERSION}</div>
         </div>"""
-
+        
         input "logEnable", "bool", title: "Enable Debug Logging", defaultValue: true
         input "txtEnable", "bool", title: "Enable Description Text", defaultValue: true
     }
 }
 
-// 2. Accessor Function
-def driverVersion() { return DRIVER_VERSION }
-
 void initialize() {
-    // 3. State Tracking
-    state.driverVersion = driverVersion()
-    sendEvent(name: "_version", value: driverVersion())
-
-    // 4. Log upon Init
-    logInfo("Initializing ${device.displayName} (Driver v${driverVersion()})")
+    sendEvent(name: "_version", value: DRIVER_VERSION)
+    logInfo("Initializing (v${DRIVER_VERSION})")
     
+    // Auto-disable debug after 30 mins
     if (logEnable) runIn(1800, logsOff)
-}
-
-// Standard Logging Helpers
-void logInfo(String msg) {
-    if (txtEnable) log.info "${device.displayName}: ${msg}"
-}
-
-void logsOff() {
-    device.updateSetting("logEnable", [value: "false", type: "bool"])
-    log.info "${device.displayName}: Debug logging auto-disabled"
 }
 ```
 
-## 3. Installation Guide
+### D. Reliability Standards (The "Safe Parse" Pattern)
+To prevent "Silent Failures" where a driver crashes without logging an error (e.g., if the Bridge sends malformed data), the `parse()` method **must** be wrapped in a `try/catch` block.
 
-1.  **Hubitat Package Manager (HPM):**
-    * Search for "Aniva" in the HPM store.
-    * Select **"Virtual Mutable Battery"** for installation.
+**Requirements:**
+1.  **Input Handling:** The `parse` method should accept `def description` to handle both Maps and Lists.
+2.  **Wrap Logic:** Enclose the main logic in `try { ... } catch (e) { ... }`.
+3.  **Fatal Logging:** The `catch` block must log the error at `error` level.
 
-2.  **Manual Install:**
-    * Go to **Drivers Code** in Hubitat.
-    * Click **New Driver**.
-    * Paste the content of `IkeaParasoll.groovy`.
-    * Click **Save**.
+**Safe Parse Template:**
+
+```groovy
+def parse(description) {
+    try {
+        if (logEnable) log.debug "Received from Bridge: ${description}"
+        
+        if (description instanceof List) {
+            description.each { event -> handleBridgeEvent(event) }
+        } else if (description instanceof Map) {
+            handleBridgeEvent(description)
+        }
+    } catch (e) {
+        log.error "FATAL CRASH IN PARSE: ${e}"
+    }
+}
+```
