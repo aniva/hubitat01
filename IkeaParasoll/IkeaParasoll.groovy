@@ -30,7 +30,7 @@ metadata {
             <div style='display: flex; align-items: center;'>
                 <img src='https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/IkeaParasoll/images/ikeaparasoll.png' 
                      style='height: 50px; width: 50px; min-width: 50px; object-fit: contain; margin-right: 15px;'
-                     onerror="this.src='https://raw.githubusercontent.com/hubitat/HubitatPublic/master/examples/drivers/icons/contact-sensor.png'">
+                     onerror="this.src='https://www.ikea.com/ch/en/images/products/parasoll-door-window-sensor-smart-white__1209776_pe909547_s5.jpg'">
                 <div>
                     <div style='font-weight: bold; font-size: 1.1em; color: #333;'>IKEA PARASOLL</div>
                     <div style='font-size: 0.8em; color: #888;'>Zigbee Component v${driverVersion()}</div>
