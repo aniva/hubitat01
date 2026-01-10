@@ -52,7 +52,7 @@ This driver acts as a custom "Matter Bridge" for the IKEA DIRIGERA Hub. By defau
 
 3.  Select **"Partner"** or **"Manual"** pairing if prompted.
 4.  Paste the **11-digit Setup Code** you copied from the IKEA app into the text field.
-    <br><img src="images/add_dirigera_to_he_step6.jpg" width="300">
+    <br><img src="images/add_dirigera_to_he_step6.png" width="300">
 
 5.  Click **Start Pairing**. Hubitat will discover the hub and add it as a "Generic Matter Bridge".
 
