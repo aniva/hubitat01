@@ -159,14 +159,6 @@ The driver consumes a JSON response that may be formatted as a List or a Map.
 }
 ```
 
-## 3. Naming & Attribute Standards (STRICT)
-**Update v4.11:** We have shifted from snake_case to **camelCase** to align with Hubitat standards. We do not use standard generic attribute names (like 'power') except for the specific dashboard bridge.
-
-### Attribute Naming Convention
-* **Format:** '[type][IntervalSuffix][UnitSuffix]'
-* **Case:** camelCase (e.g., 'powerRealTimeKw', 'locationCostPerDay').
-* **Parent Prefix:** Parent attributes are prefixed with 'location' (e.g., 'locationPowerRealTimeKw').
-
 ### Interval Logic (Suffix)
 The 'interval' field (seconds) determines the middle part of the attribute name:
 
@@ -187,7 +179,7 @@ The 'interval' field (seconds) determines the middle part of the attribute name:
 | Wh, kWh (Interval > 0) | **kWh** | 'Kwh' | 'powerPerDayKwh' |
 | $, Dollars | **$** | (None) | 'costPerDay' |
 
-## 4. Technical Constraints & Fixes
+## 3. Technical Constraints & Fixes
 If modifying this driver, strictly adhere to these fixes established during v1.0 - v4.11 development:
 
 ### A. The "Clean State" Rule
@@ -195,16 +187,7 @@ If modifying this driver, strictly adhere to these fixes established during v1.0
 * **Reason:** Users prefer a clean interface. If the API does not report "Real-time Cost" for a specific device, that attribute should simply not exist on the device page.
 * **Implementation:** The driver must calculate valid attributes and 'sendEvent' only for what is present in the current payload.
 
-### B. The "LazyMap" Serialization Fix
-* **Problem:** Hubitat's 'LazyMap' object (from 'slurper') fails to serialize when passed from Parent -> Child driver, causing child data to be empty.
-* **Fix:** The Parent driver **MUST** convert the data to a standard Java 'HashMap' before calling 'child.parseItems()'.
-
-### C. Initialization & Versioning
-* **Requirement:** Both drivers must include 'capability "Initialize"'.
-* **Requirement:** Both drivers must maintain a '_version' attribute to verify the code update was applied successfully.
-* **Requirement:** Parent must include command 'recreateChildDevices' to allow users to purge old/messy attributes if the naming convention changes.
-
-## 5. Driver Structure
+## 4. Driver Structure
 
 ### Parent Driver ('WiMeterCloudBridge.groovy')
 * **Role:** Polling, HTTP GET, Preferences, Child Management.
@@ -224,12 +207,12 @@ If modifying this driver, strictly adhere to these fixes established during v1.0
     * Updates 'icon' and 'htmlIcon' from URL.
     * Generates 'htmlTile' for dashboards.
 
-## 6. Deployment (HPM)
+## 5. Deployment (HPM)
 * **Status:** **Merged into Official HPM Repository.**
 * **Manifest:** 'packageManifest.json' lists both drivers.
 * **Versioning:** Version numbers in the JSON manifest must match the 'driverVersion()' in the Groovy code.
 
-## 7. Dashboard HTML Tile Architecture (v4.15)
+## 6. Dashboard HTML Tile Architecture (v4.15)
 The driver generates a specialized HTML block (exposed via the 'htmlTile' attribute) to provide a "Live Status" card on dashboards.
 
 ### Visual Components
@@ -270,7 +253,7 @@ Logic calculates 'powerLevel' string alongside color.
 
 ---
 
-## 8. Future Roadmap / To-Do (v4.15+)
+## 7. Future Roadmap / To-Do (v4.15+)
 
 1.  **[COMPLETED] Standardize State Variables (CamelCase)**
     * **Status:** Done in v4.11.
