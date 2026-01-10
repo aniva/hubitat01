@@ -1,11 +1,18 @@
 /**
- * IKEA DIRIGERA Bridge (Custom Parent)
+ * IKEA DIRIGERA Bridge
  *
- * Replaces the built-in "Generic Matter Bridge" to allow custom child drivers.
- * Acts as a "Dispatcher," routing Matter events to the correct child device.
+ * Description: Custom Matter Bridge driver that bypasses standard filters to allow
+ * custom child drivers (like IKEA PARASOLL) to function correctly.
+ * Acts as a dispatcher, routing raw Matter events to specific endpoints.
  *
  * Author: Aniva
+ * License: Apache 2.0
+ * Support: https://paypal.me/AndreiIvanov420
  */
+
+import groovy.transform.Field
+
+@Field static final String DRIVER_VERSION = "1.0.0"
 
 metadata {
     definition (name: "IKEA DIRIGERA Bridge", namespace: "aniva", author: "Aniva") {
@@ -13,98 +20,149 @@ metadata {
         capability "Refresh"
         capability "Configuration"
         
-        // This is the magic fingerprint for the Dirigera Hub
+        // Fingerprint for the IKEA DIRIGERA Hub (Matter Gateway)
         fingerprint deviceId: "0010", vendor: "IKEA of Sweden", model: "DIRIGERA Hub", controllerType: "MAT"
     }
+
+    preferences {
+        // --- DRIVER INFO HEADER (Aniva Standard) ---
+        input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
+        <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
+            <div style='display: flex; align-items: center;'>
+                <img src='https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/DirigeraBridge/images/dirigera.png' 
+                     style='height: 50px; width: 50px; min-width: 50px; object-fit: contain; margin-right: 15px;'
+                     onerror="this.src='https://raw.githubusercontent.com/hubitat/HubitatPublic/master/examples/drivers/icons/hub.png'">
+                <div>
+                    <div style='font-weight: bold; font-size: 1.1em; color: #333;'>IKEA DIRIGERA</div>
+                    <div style='font-size: 0.8em; color: #888;'>Custom Matter Bridge v${driverVersion()}</div>
+                </div>
+            </div>
+            <div style='text-align: right; font-size: 0.8em; line-height: 1.4;'>
+                <a href='https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/DirigeraBridge/README.md' target='_blank' style='color: #0275d8; text-decoration: none;'>View README</a><br>
+                <a href='https://paypal.me/AndreiIvanov420' target='_blank' style='color: #0275d8; text-decoration: none;'>Support Dev</a>
+            </div>
+        </div>"""
+        
+        input "logEnable", "bool", title: "Enable Debug Logging", defaultValue: true
+        input "txtEnable", "bool", title: "Enable Description Text", defaultValue: true
+    }
 }
 
-void installed() { initialize() }
-void updated() { initialize() }
+def driverVersion() { return DRIVER_VERSION }
+
+void installed() {
+    logInfo("Installed")
+    initialize()
+}
+
+void updated() {
+    logInfo("Updated")
+    initialize()
+}
 
 void initialize() {
-    log.info "Initializing Dirigera Bridge..."
-    // Ensure we are subscribed to the bridge's system events if needed
-    refresh()
+    state.driverVersion = driverVersion()
+    logInfo("Initializing Bridge...")
+    // In a full implementation, we might query the endpoint list here
 }
 
-// --- THE DISPATCHER (The Heart of the Bridge) ---
-
+// --- THE DISPATCHER ---
+// Parses raw Matter messages from the Hub and routes them to children
 void parse(String description) {
-    // 1. Decode the Raw Matter Message
     Map descMap = matter.parseDescriptionAsMap(description)
     
-    if (logEnable) log.debug "BRIDGE Received: ${descMap}"
+    if (logEnable) log.debug "BRIDGE Received Raw: ${descMap}"
 
-    // 2. Extract the Endpoint (The "Address" of the child sensor)
-    // Matter endpoints are usually hex strings in the map (e.g. "01", "17")
+    // 1. Extract Endpoint ID (Target Device)
     String endpointId = descMap.endpointId
-    
-    if (!endpointId) {
-        // Some messages are for the hub itself (Endpoint 00)
-        return 
-    }
+    if (!endpointId) return // Ignore messages for the Bridge itself (Endpoint 00) or system messages
 
-    // 3. Find the Child Device
-    // The DNI (Device Network ID) is typically "HubID-EndpointID" (e.g. "M3012-17")
-    // We need to construct it carefully.
+    // 2. Construct Child Device Network ID (DNI)
+    // Standard Format: "BridgeDNI-EndpointID" (e.g., M3012-17)
     String childDni = "${device.deviceNetworkId}-${endpointId}"
     
-    def child = getChildDevice(childDni)
+    // 3. Find Child Device
+    def childDevice = getChildDevice(childDni)
     
-    // 4. If Child Exists, Forward the Data
-    if (child) {
-        // We convert the raw map into a nice Event List for the component driver
+    if (childDevice) {
+        // 4. Translate & Forward
         List events = convertToEvents(descMap)
-        if (events) {
-            child.parse(events) // <-- We FORCE the data into the child
+        if (events && events.size() > 0) {
+            if (logEnable) log.debug "Dispatching to ${childDevice.displayName}: ${events}"
+            childDevice.parse(events)
         }
     } else {
-        log.warn "Bridge received data for unknown child: ${childDni}. Run 'Refresh' to discover devices."
+        // Optional: If you want to auto-create missing devices, code goes here.
+        // For now, we just warn.
+        if (logEnable) log.warn "Data received for unknown child: ${childDni}. (Run 'Refresh' or Re-pair to discover)."
     }
 }
 
-// --- TRANSLATOR (Raw Matter -> Hubitat Events) ---
+// --- TRANSLATOR (Matter -> Event List) ---
 List convertToEvents(Map map) {
     List events = []
     
-    // CONTACT SENSOR (Cluster 0045, Attribute 0000)
+    // Contact Sensor (Cluster 0045, Attribute 0000)
     if (map.cluster == "0045" && map.attrId == "0000") {
         String val = map.value
+        // Normalize 00/01 to open/closed
         String status = (val == "00" || val == "0") ? "open" : "closed"
         events.add([name: "contact", value: status])
     }
     
-    // BATTERY (Cluster 002F, Attribute 000C)
+    // Battery (Cluster 002F, Attribute 000C)
     else if (map.cluster == "002F" && map.attrId == "000C") {
-        int raw = Integer.parseInt(map.value, 16)
-        // Pass RAW value to child; let child do the /2 math
-        events.add([name: "battery", value: raw])
+        // Convert Hex String to Integer
+        int rawValue = Integer.parseInt(map.value, 16)
+        // Send RAW value to child (Child handles the /2 math)
+        events.add([name: "battery", value: rawValue])
     }
     
     return events
 }
 
-// --- CHILD MANAGEMENT ---
+// --- COMMANDS ---
 
-// This method is called when you click "Refresh"
 void refresh() {
-    log.info "Bridge Refreshing..."
-    
-    // In a full implementation, we would query the Endpoints list here.
-    // For now, we rely on the fact that the children are already created.
+    logInfo("Refreshing Bridge...")
+    // This refreshes the bridge itself.
+    // To refresh children, iterate through them or wait for them to call componentRefresh.
 }
 
-// This allows the Child to ask for a refresh (called via parent.componentRefresh)
+void configure() {
+    logInfo("Configuring Bridge...")
+    refresh()
+}
+
+// --- CHILD INTERFACE ---
+// Called by Child Drivers (v2.1+) when 'Refresh' is clicked on the child page
 void componentRefresh(def childDevice) {
-    log.info "Child ${childDevice} asked for refresh"
+    if (txtEnable) log.info "Refresh requested by child: ${childDevice.displayName}"
     
-    // Extract Endpoint from Child DNI
-    String ep = childDevice.deviceNetworkId.split("-").last()
+    String dni = childDevice.deviceNetworkId
+    if (!dni || !dni.contains("-")) return
     
-    // Send Read Attribute Commands to the Matter Network
+    String ep = dni.split("-").last() // Extract "17" from "M3012-17"
+    
+    // Send Read Attribute commands to the Matter Network for this specific endpoint
     List<String> cmds = []
     cmds.add(matter.readAttribute(ep, "0045", "0000")) // Contact
     cmds.add(matter.readAttribute(ep, "002F", "000C")) // Battery
     
     sendHubCommand(new hubitat.device.HubMultiAction(cmds, hubitat.device.Protocol.MATTER))
+}
+
+// --- HELPERS ---
+
+void logsOff() {
+    device.updateSetting("logEnable", [value: "false", type: "bool"])
+    log.info "${device.displayName}: Debug logging auto-disabled"
+}
+
+void logDebug(String msg) {
+    if (logEnable) log.debug "${device.displayName}: ${msg}"
+}
+
+void logInfo(String msg) {
+    if (txtEnable) log.info "${device.displayName}: ${msg}"
 }
