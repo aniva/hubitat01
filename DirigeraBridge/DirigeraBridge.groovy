@@ -30,14 +30,14 @@ metadata {
             <div style='display: flex; align-items: center;'>
                 <img src='https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/DirigeraBridge/images/dirigera.png' 
                      style='height: 50px; width: 50px; min-width: 50px; object-fit: contain; margin-right: 15px;'
-                     onerror="this.src='https://raw.githubusercontent.com/hubitat/HubitatPublic/master/examples/drivers/icons/hub.png'">
+                     onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT05Ai89HJ-6OyP1MMhdYf4RaRdc4foLo5tvQ&s'">
                 <div>
                     <div style='font-weight: bold; font-size: 1.1em; color: #333;'>IKEA DIRIGERA</div>
                     <div style='font-size: 0.8em; color: #888;'>Custom Matter Bridge v${DRIVER_VERSION}</div>
                 </div>
             </div>
             <div style='text-align: right; font-size: 0.8em; line-height: 1.4;'>
-                <a href='https://raw.githubusercontent.com/aniva/hubitat01/refs/heads/master/DirigeraBridge/README.md' target='_blank' style='color: #0275d8; text-decoration: none;'>View README</a><br>
+                <a href='https://github.com/aniva/hubitat01/blob/master/DirigeraBridge/README.md' target='_blank' style='color: #0275d8; text-decoration: none;'>View README</a><br>
                 <a href='https://paypal.me/AndreiIvanov420' target='_blank' style='color: #0275d8; text-decoration: none;'>Support Dev</a>
             </div>
         </div>"""
