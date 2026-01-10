@@ -80,7 +80,7 @@
         "Hub"
       ],
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/DirigeraBridge/packageManifest.json",
-      "description": "Custom Matter Bridge driver for IKEA DIRIGERA Hub to access Zigbee devices added to the hub."
+      "description": "Custom Matter Bridge driver for IKEA DIRIGERA Hub to access Zigbee devices added to the Hub."
     }
   ]
 }
