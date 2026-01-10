@@ -1,28 +1,53 @@
-## How to Add Device to Hubitat
+# IKEA PARASOLL Zigbee Sensor (Component Driver)
 
-**Important:** You do not pair the PARASOLL sensor directly to Hubitat. You pair it to the **IKEA DIRIGERA Hub**, and the Hub passes it to Hubitat via the existing Matter Bridge connection.
+**Device:** IKEA PARASOLL Door/Window Sensor
+**Type:** Component Child Driver (Requires DIRIGERA Bridge)
+**Author:** Aniva
+**Version:** 2.2.0
 
-### Step 1: Pair Sensor to IKEA DIRIGERA
-1.  Open the **IKEA Home Smart** app.
-2.  Follow the standard instructions to add the PARASOLL sensor to your IKEA system.
+## Overview
+This driver is designed specifically for the **IKEA PARASOLL** sensor when connected through the **IKEA DIRIGERA Hub**.
 
-### Step 2: Sync with Hubitat
-* **If you ALREADY use IKEA devices (like Timmerflotte) in Hubitat:**
-    * **STOP.** Do not scan any QR codes.
-    * The new sensor will automatically appear in your Hubitat "Devices" list within 1-2 minutes.
-    * *Troubleshooting:* If it does not appear, go to the device in Hubitat named **"Matter Bridge"** (or whatever you named your Dirigera Hub) and click the **Refresh** button. This forces Hubitat to ask IKEA for a list of new devices.
+It is **not** a standalone Zigbee driver. Instead, it works as a "Child" of the [IKEA DIRIGERA Bridge](../DirigeraBridge/README.md) to provide features that the standard generic drivers lack.
 
-* **If this is your FIRST time connecting IKEA to Hubitat:**
-    1.  In the IKEA App, go to **User Profile** (icon) -> **Integrations** -> **Matter Bridge**.
-    2.  Enable the bridge to generate a **QR Code**.
-    3.  In Hubitat, go to **Devices** -> **Add Device** -> **Matter**.
-    4.  Scan the IKEA QR code. This will add the Hub and ALL your Zigbee devices to Hubitat at once.
+### Key Features
+* **Battery Correction:** Automatically converts IKEA's raw 0-200 battery scale into a standard 0-100% reading.
+* **Logic Reversal:** Includes a preference to flip "Open" and "Closed" states (useful depending on how you mount the magnet).
+* **Automatic Discovery:** No manual pairing to Hubitat required; simply refresh the Bridge.
 
-### Step 3: Assign the Driver
-Hubitat usually selects a "Generic Matter Contact Sensor" driver by default. To use this custom driver:
+---
 
-1.  Go to the **Device Page** of your new Parasoll sensor in Hubitat.
-2.  Scroll down to **Device Information**.
-3.  Under **Type**, search for and select: **IKEA PARASOLL Matter Sensor** (by Aniva).
-4.  Click **Save Device**.
-5.  Click the **Configure** button at the top of the page to sync settings.
+## Prerequisites
+* **IKEA DIRIGERA Hub** (Physical Device)
+* **[IKEA DIRIGERA Bridge](../DirigeraBridge/README.md)** (Parent Driver) installed on Hubitat.
+
+---
+
+## Installation & Setup
+
+### Step 1: Install the Driver Code
+1.  **Via HPM:** Search for "Aniva" and install the **"Ikea Parasoll"** package.
+2.  **Manually:** Copy the code from `IkeaParasoll.groovy` in this repo and save it to **Drivers Code** in Hubitat.
+
+### Step 2: Pair Sensor to IKEA Hub
+1.  Open the **IKEA Home Smart** app on your phone.
+2.  Follow the instructions to pair your **PARASOLL** sensor to the IKEA DIRIGERA Hub.
+3.  Ensure it shows up and works in the IKEA app.
+
+<br><img src="images/ikea_app_parasoll_example.png" width="300">
+
+### Step 3: Sync with Hubitat
+1.  Open your Hubitat Web Interface.
+2.  Navigate to the **IKEA DIRIGERA Bridge** device you previously set up.
+3.  Click the **Refresh** button.
+4.  Look at the **"Child Devices"** list (or your main Devices page). The PARASOLL sensor will appear automatically!
+
+<br><img src="images/he_refresh_dirigera_to_reveal_new_devices.png">
+
+---
+
+## Configuration
+Once the device is created, you can open its device page to configure settings:
+
+* **Reverse Open/Close Logic:** Toggle this if your sensor reports "Open" when the door is closed (often happens with specific magnet placements).
+* **Enable Debug Logging:** Useful for troubleshooting connection issues.
