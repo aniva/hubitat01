@@ -57,6 +57,30 @@
       ],
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/VirtualBattery/packageManifest.json",
       "description": "Virtual battery driver with Actuator capability for Rule Machine integration."
+    },
+    {
+      "name": "IKEA PARASOLL Matter Sensor",
+      "category": "Integrations",
+      "tags": [
+        "Matter",
+        "Sensor",
+        "IKEA",
+        "Contact"
+      ],
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/IkeaParasoll/packageManifest.json",
+      "description": "Dedicated DIRIGERA hub driver for IKEA PARASOLL Door/Window sensor."
+    },
+    {
+      "name": "IKEA DIRIGERA Bridge",
+      "category": "Integrations",
+      "tags": [
+        "Matter",
+        "Bridge",
+        "IKEA",
+        "Hub"
+      ],
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/DirigeraBridge/packageManifest.json",
+      "description": "Custom Matter Bridge driver for IKEA DIRIGERA Hub to access Zigbee devices added to the hub."
     }
   ]
 }
