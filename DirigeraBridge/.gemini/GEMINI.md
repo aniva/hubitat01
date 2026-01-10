@@ -31,7 +31,7 @@ Every driver must implement the following 5 strict requirements:
 1.  **Static Variable:** Define the version in a static field at the top of the script.
 2.  **Accessor Function:** Create a `driverVersion()` function that returns this static field.
 3.  **State Tracking:** In `initialize()`, write this version to `state.driverVersion`.
-4.  **Logging:** Log the version immediately upon initialization.
+4.  **Logging:** Log the version immediately upon initialization using debug level.
 5.  **UI Header:** Display the version dynamically inside a styled HTML paragraph block in `preferences`.
 
 **Standard Implementation Template:**
