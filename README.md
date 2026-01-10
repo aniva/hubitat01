@@ -20,7 +20,7 @@ The easiest way to install and update these drivers is using **Hubitat Package M
     ```
 5.  Click **Save**.
 6.  Go back to the main menu and select **Install**.
-7.  Search for the desired package (e.g., "Vindstyrka" or "OpenWeatherMap") and follow the prompts.
+7.  Search for the desired package (e.g., "Dirigera Bridge" or "Vindstyrka") and follow the prompts.
 
 ---
 
@@ -71,7 +71,28 @@ A specialized virtual driver that bridges the gap between devices reporting vagu
 * **Features:**
     * **Rule Machine Ready:** Exposes the `Actuator` capability, allowing rules to write battery levels via the custom `setBattery()` command.
     * **Proxy Logic:** Perfect for Blink cameras or cloud devices that don't report percentages—translates "Low" text status into a visual "15%" red icon.
-    * **Dashboard Friendly:** Enables standard Green/Red battery tiles for otherwise unsupported devices.  
+    * **Dashboard Friendly:** Enables standard Green/Red battery tiles for otherwise unsupported devices.
+
+### 6. [IKEA DIRIGERA Matter Bridge](./DirigeraBridge)
+**Status:** Stable (v1.1.0)
+
+A custom parent driver that bypasses the limitations of Hubitat's generic Matter bridge. It acts as a "Gatekeeper," routing raw data to custom child drivers for unsupported devices.
+
+* **Features:**
+    * **Filter Bypass:** Unlocks access to "Unknown" IKEA Zigbee devices paired via Matter.
+    * **Smart Dispatching:** Routes raw events (Integer/Hex) to specific child components.
+    * **Stability:** Features "Safe Parse" logic to prevent silent crashes on malformed data.
+
+### 7. [IKEA PARASOLL Zigbee Sensor](./IkeaParasoll)
+**Status:** Stable (v2.2.0)
+
+A component child driver for the **IKEA PARASOLL** Door/Window sensor (requires Dirigera Bridge).
+
+* **Features:**
+    * **Battery Fix:** Automatically converts IKEA's raw 0-200 scale to standard 0-100% for dashboards.
+    * **Logic Control:** Includes a setting to reverse Open/Close states without remounting the magnet.
+    * **Auto-Discovery:** Automatically appears in Hubitat when the Bridge is refreshed.
+
 ---
 
 ## ❤️ Support
