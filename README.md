@@ -72,17 +72,6 @@ A specialized virtual driver that bridges the gap between devices reporting vagu
     * **Rule Machine Ready:** Exposes the `Actuator` capability, allowing rules to write battery levels via the custom `setBattery()` command.
     * **Proxy Logic:** Perfect for Blink cameras or cloud devices that don't report percentages—translates "Low" text status into a visual "15%" red icon.
     * **Dashboard Friendly:** Enables standard Green/Red battery tiles for otherwise unsupported devices.  
-
-### 6. [IKEA PARASOLL Matter Sensor](./IkeaParasoll)
-**Status:** Initial Release (v1.0.0)
-
-A native, local driver for the **IKEA PARASOLL** Door/Window Zigbee sensor when bridged via the **IKEA DIRIGERA** hub using **Matter**.
-
-* **Features:**
-    * **Matter Native:** Built using Hubitat's `matter` class for local execution, to work with Zigbee device paired with IKEA DIRIGERA.
-    * **Battery Precision:** Automatically converts Matter's raw 0-200 scale into a standard 0-100% percentage.
-    * **Logic Reversal:** Includes a preference to reverse "Open/Close" logic for specific mounting needs.
-    * **Auto-Discovery:** Fingerprints for automatic detection upon pairing.
 ---
 
 ## ❤️ Support

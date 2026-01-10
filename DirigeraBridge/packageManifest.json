@@ -1,0 +1,20 @@
+{
+  "packageName": "IKEA DIRIGERA Bridge",
+  "author": "Aniva",
+  "version": "1.0.0",
+  "minimumHEVersion": "2.3.0",
+  "dateReleased": "2026-01-10",
+  "releaseNotes": "Initial Release: Custom Matter Bridge driver for IKEA DIRIGERA Hub.",
+  "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
+  "documentationLink": "https://github.com/aniva/hubitat01/blob/master/DirigeraBridge/README.md",
+  "payPalUrl": "https://paypal.me/AndreiIvanov420",
+  "drivers": [
+    {
+      "id": "9102845d-523c-48b8-8259-165839201234",
+      "name": "IKEA DIRIGERA Bridge",
+      "namespace": "aniva",
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/DirigeraBridge/DirigeraBridge.groovy",
+      "required": true
+    }
+  ]
+}
