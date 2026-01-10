@@ -96,6 +96,30 @@ void logsOff() {
 }
 ```
 
+### C. Reliability & Debugging Standards (The "Safe Parse" Pattern)
+To prevent "Silent Failures" where a driver crashes without logging an error, all `parse()` methods and complex logic blocks must be wrapped in a specific `try/catch` structure.
+
+**Requirements:**
+1.  **Wrap Logic:** Enclose the entire method body in `try { ... } catch (e) { ... }`.
+2.  **Fatal Logging:** The `catch` block must log the error at `error` level with the prefix `FATAL CRASH:`.
+3.  **Step Logging (Optional):** For complex parsing, use numbered debug logs (Step 1, Step 2) to trace execution flow.
+
+**Implementation Template:**
+
+```groovy
+void parse(String description) {
+    try {
+        // Step 1: Input Validation
+        if (logEnable) log.debug "STEP 1 - Raw Input: ${description}"
+        
+        // ... (Your Logic Here) ...
+        
+    } catch (e) {
+        // Critical: Catch crash and print stack trace
+        log.error "FATAL CRASH IN PARSE: ${e}"
+    }
+}
+
 ## 3. Installation Guide
 
 1.  **Hubitat Package Manager (HPM):**
