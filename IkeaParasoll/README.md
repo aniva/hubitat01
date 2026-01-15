@@ -46,6 +46,19 @@ It is **not** a standalone Zigbee driver. Instead, it works as a "Child" of the 
 
 ---
 
+## ⚠️ Migration Note: "Swap Apps Device" Limitation
+If you are replacing an old contact sensor with this new Parasoll sensor, please note:
+
+**Hubitat's "Swap Apps Device" tool does NOT support Component Child devices.**
+Because the Parasoll sensor is technically a *sub-component* of the Dirigera Bridge, Hubitat hides it from the automatic swap tool to prevent database errors.
+
+**How to Migrate Manually:**
+1.  Go to the Device Page of your **Old Sensor**.
+2.  Scroll down to the **"In Use By"** section to see exactly which apps/rules are using it.
+3.  Open each app (Rule Machine, Dashboards, Alexa, etc.) and manually select the new **Parasoll** device.
+
+---
+
 ## Configuration
 Once the device is created, you can open its device page to configure settings:
 
