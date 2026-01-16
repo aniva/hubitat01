@@ -47,9 +47,10 @@
       "description": "Dedicated Matter driver for IKEA TIMMERFLOTTE Temp & Humidity sensor."
     },
     {
-      "name": "Virtual Mutable Battery",
+      "name": "Virtual Smart Battery (Mutable)",
       "category": "Utilities",
       "tags": [
+        "Monitoring",
         "Battery",
         "Virtual",
         "Rule Machine",
@@ -59,9 +60,10 @@
       "description": "Virtual battery driver with Actuator capability for Rule Machine integration."
     },
     {
-      "name": "IKEA PARASOLL Matter Sensor",
+      "name": "IKEA PARASOLL Matter Zigbee Sensor",
       "category": "Integrations",
       "tags": [
+        "Zigbee",
         "Matter",
         "Sensor",
         "IKEA",

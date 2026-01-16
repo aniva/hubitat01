@@ -1,7 +1,7 @@
 {
-  "packageName": "IKEA PARASOLL Matter Sensor",
+  "packageName": "IKEA PARASOLL Matter Zigbee Sensor",
   "author": "Aniva",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "minimumHEVersion": "2.3.0",
   "dateReleased": "2026-01-09",
   "releaseNotes": "Initial Release: Dedicated Matter driver for IKEA PARASOLL Door/Window sensor.",
