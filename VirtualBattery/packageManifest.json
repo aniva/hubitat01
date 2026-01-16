@@ -1,10 +1,10 @@
 {
   "packageName": "Virtual Mutable Battery",
   "author": "Aniva",
-  "version": "1.0.0",
+  "version": "2.1.5",
   "minimumHEVersion": "2.2.0",
   "dateReleased": "2026-01-05",
-  "releaseNotes": "Initial Release: Virtual battery driver with Actuator capability for Rule Machine integration.",
+  "releaseNotes": "v2.1.5: Major Overhaul! Transformed into a 'Smart Simulator' with gradual battery drain, 'Time Machine' date selection for past installs, and adaptive learning that adjusts to your real battery usage. Includes new 'setSourceStatus' command for Rule Machine and fixed UI rendering.",
   "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
   "documentationLink": "https://github.com/aniva/hubitat01/blob/master/VirtualBattery/README.md",
   "payPalUrl": "https://paypal.me/AndreiIvanov420",
