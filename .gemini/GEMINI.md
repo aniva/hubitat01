@@ -18,7 +18,45 @@ Every driver must implement the following to ensure users can track updates and 
 2.  **Accessor:** `def driverVersion() { return DRIVER_VERSION }`
 3.  **State Tracking:** In `initialize()`, write this to `state.driverVersion` and/or `sendEvent(name: "_version"...)`.
 4.  **Initialization Log:** Log the version immediately upon `initialize()` using `logInfo`.
-5.  **UI Header:** The `preferences` block must start with the standard "About" paragraph tile (Logo + Version + Links).
+5.  **UI Header:** The `preferences` block must use the **Map-based Input Syntax** and the **CSS Background Image** technique for icons (to prevent SVG rendering issues).
+
+**Standard Header Implementation:**
+
+```groovy
+    preferences {
+        // Aniva Standard Header (CSS Background Method)
+        input(
+            name: 'about',
+            type: 'paragraph',
+            element: 'paragraph',
+            title: '',
+            description: ```
+            <div style="min-height:55px; background:transparent url('data:image/svg+xml;base64,PHN2Zy...') no-repeat left center; background-size:50px 50px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #fafafa; padding: 10px 10px 10px 80px;">
+                <div style="font-weight: bold; font-size: 1.1em; color: #333;">Device Name</div>
+                <div style="font-size: 0.8em; color: #888;">Driver v``` + driverVersion() + ```</div>
+                <div style="font-size: 0.8em; margin-top: 5px;">
+                    <a href="https://github.com/aniva/hubitat01" target="_blank">View GitHub</a> | 
+                    <a href="https://paypal.me/AndreiIvanov420" target="_blank">Support Dev</a>
+                </div>
+            </div>
+            ```
+        )
+
+        input(
+            name: 'logEnable', 
+            type: 'bool', 
+            title: 'Enable Debug Logging', 
+            defaultValue: true
+        )
+
+        input(
+            name: 'txtEnable', 
+            type: 'bool', 
+            title: 'Enable Description Text', 
+            defaultValue: true
+        )
+    }
+```
 
 ### B. Standard Logging
 * **Inputs:** Must include `logEnable` (Debug) and `txtEnable` (Description Text).
@@ -28,7 +66,7 @@ Every driver must implement the following to ensure users can track updates and 
 ### C. Reliability (The "Safe Parse")
 To prevent silent failures, all `parse()` methods and complex logic blocks must be wrapped in `try/catch`:
 
-'''groovy
+```groovy
 void parse(String description) {
     try {
         // ... Logic ...
@@ -36,7 +74,7 @@ void parse(String description) {
         log.error "FATAL CRASH IN PARSE: ${e}"
     }
 }
-'''
+```
 
 ### D. Capabilities
 * **Actuator:** Must be included in all drivers to ensure visibility in Rule Machine.
