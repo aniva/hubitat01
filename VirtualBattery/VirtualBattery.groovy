@@ -10,12 +10,12 @@
  * - Aniva Standard UI (Fixed CSS Background).
  *
  * Author: Aniva
- * Version: 2.1.5
+ * Version: 2.1.6
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "2.1.5"
+@Field static final String DRIVER_VERSION = "2.1.6"
 
 metadata {
     definition (name: "Virtual Smart Battery", namespace: "aniva", author: "Aniva") {
@@ -40,7 +40,6 @@ metadata {
 
     preferences {
         // ANIVA STANDARD HEADER (CSS Background Method)
-        // Fixed: background-size set to 50px to prevent overlap. Padding increased to 80px.
         input(
             name: 'about', 
             type: 'paragraph', 
@@ -198,7 +197,7 @@ void refresh() {
         // Time expired
         if (device.currentValue("cycleState") != "Low") {
             logInfo("Time expired based on installation date. Setting to Low Threshold.")
-            sendEvent(name: "battery", value: minLevel)
+            sendEvent(name: "battery", value: minLevel, unit: "%") // Added unit
             sendEvent(name: "cycleState", value: "Discharging") 
         }
     } else {
@@ -211,7 +210,7 @@ void refresh() {
         if (newLevel <= minLevel) newLevel = minLevel + 1
         
         logInfo("Recalculated Battery: ${newLevel}% based on ${elapsedDays.round(1)}/${targetDays} days.")
-        sendEvent(name: "battery", value: newLevel)
+        sendEvent(name: "battery", value: newLevel, unit: "%") // Added unit
         sendEvent(name: "cycleState", value: "Discharging")
         
         // Restart Scheduler
@@ -244,7 +243,7 @@ void resetBatteryReplacementDate() {
     // 2. IMPORTANT: Force logic reset immediately so we don't wait for refresh
     state.cycleStart = new Date().time
     sendEvent(name: "batteryInstalled", value: today)
-    sendEvent(name: "battery", value: 100)
+    sendEvent(name: "battery", value: 100, unit: "%") // Added unit
     sendEvent(name: "cycleState", value: "Discharging")
     
     // 3. Trigger full refresh to start scheduler
@@ -253,7 +252,7 @@ void resetBatteryReplacementDate() {
 
 void setBattery(BigDecimal level) {
     logInfo("Manual Battery Override: ${level}%")
-    sendEvent(name: "battery", value: level.toInteger())
+    sendEvent(name: "battery", value: level.toInteger(), unit: "%") // Added unit
 }
 
 // --- LOGIC ENGINE ---
@@ -263,7 +262,7 @@ void handleLowBattery() {
     
     logInfo("Low Battery Reported by Source! Ending Cycle.")
     sendEvent(name: "cycleState", value: "Low")
-    sendEvent(name: "battery", value: lowThreshold)
+    sendEvent(name: "battery", value: lowThreshold, unit: "%") // Added unit
     
     // Stop simulation
     unschedule("decrementBattery")
@@ -327,7 +326,7 @@ void decrementBattery() {
     
     if (nextLevel != current) {
         logInfo("Simulating drain... Battery now ${nextLevel}%")
-        sendEvent(name: "battery", value: nextLevel)
+        sendEvent(name: "battery", value: nextLevel, unit: "%") // Added unit
         
         if (nextLevel > floor) {
             runIn(state.simInterval, decrementBattery)

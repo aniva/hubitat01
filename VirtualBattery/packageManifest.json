@@ -1,7 +1,7 @@
 {
   "packageName": "Virtual Mutable Battery",
   "author": "Aniva",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "minimumHEVersion": "2.2.0",
   "dateReleased": "2026-01-05",
   "releaseNotes": "v2.1.5: Major Overhaul! Transformed into a 'Smart Simulator' with gradual battery drain, 'Time Machine' date selection for past installs, and adaptive learning that adjusts to your real battery usage. Includes new 'setSourceStatus' command for Rule Machine and fixed UI rendering.",
