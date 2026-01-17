@@ -11,7 +11,7 @@
   "drivers": [
     {
       "id": "55d97475-1833-5527-0162-8901366f8257",
-      "name": "IKEA PARASOLL Matter Sensor",
+      "name": "IKEA PARASOLL Matter Zigbee Sensor",
       "namespace": "aniva",
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/IkeaParasoll/IkeaParasoll.groovy",
       "required": true
