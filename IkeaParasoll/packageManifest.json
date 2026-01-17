@@ -4,10 +4,10 @@
   "version": "2.2.0",
   "minimumHEVersion": "2.3.0",
   "dateReleased": "2026-01-09",
+  "releaseNotes": "Initial Release: Dedicated Matter to Zigbee driver for IKEA PARASOLL Door/Window sensor.",
   "documentationLink": "https://github.com/aniva/hubitat01/blob/master/IkeaParasoll/README.md",
   "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
   "payPalUrl": "https://paypal.me/AndreiIvanov420",
-  "releaseNotes": "Initial Release: Dedicated Matter driver for IKEA PARASOLL Door/Window sensor.",
   "drivers": [
     {
       "id": "55d97475-1833-5527-0162-8901366f8257",
