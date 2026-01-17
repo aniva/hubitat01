@@ -4,6 +4,10 @@
   "version": "1.0.11",
   "minimumHEVersion": "2.3.6",
   "dateReleased": "2026-01-02",
+  "documentationLink": "https://github.com/aniva/hubitat01/blob/master/IkeaTimmerflotte/README.md",
+  "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
+  "payPalUrl": "https://paypal.me/AndreiIvanov420",
+  "releaseNotes": "v1.0.11 - Updated Release of dedicated Matter driver for IKEA TIMMERFLOTTE Temp & Humidity sensor.",
   "drivers": [
     {
       "id": "c62f84b6-71d3-4a12-9c12-321345678912",
@@ -12,6 +16,5 @@
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/IkeaTimmerflotte/IkeaTimmerflotte.groovy",
       "required": true
     }
-  ],
-  "releaseNotes": "v1.0.11 - Updated Release of dedicated Matter driver for IKEA TIMMERFLOTTE Temp & Humidity sensor."
+  ]
 }

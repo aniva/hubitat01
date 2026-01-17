@@ -4,10 +4,10 @@
   "version": "2.1.6",
   "minimumHEVersion": "2.2.0",
   "dateReleased": "2026-01-05",
-  "releaseNotes": "v2.1.5: Major Overhaul! Transformed into a 'Smart Simulator' with gradual battery drain, 'Time Machine' date selection for past installs, and adaptive learning that adjusts to your real battery usage. Includes new 'setSourceStatus' command for Rule Machine and fixed UI rendering.",
-  "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
   "documentationLink": "https://github.com/aniva/hubitat01/blob/master/VirtualBattery/README.md",
+  "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
   "payPalUrl": "https://paypal.me/AndreiIvanov420",
+  "releaseNotes": "v2.1.6: Major Overhaul! Transformed into a 'Smart Simulator' with gradual battery drain, 'Time Machine' date selection for past installs, and adaptive learning that adjusts to your real battery usage. Includes new 'setSourceStatus' command for Rule Machine and fixed UI rendering.",
   "drivers": [
     {
       "id": "94c86364-0722-4416-9051-7890255e7146",

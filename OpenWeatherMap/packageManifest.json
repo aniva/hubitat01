@@ -4,7 +4,11 @@
   "version": "0.7.2",
   "minimumHEVersion": "2.3.0",
   "dateReleased": "2025-01-01",
+  "documentationLink": "https://github.com/aniva/hubitat01/blob/master/OpenWeatherMap/README.md",
+  "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
+  "payPalUrl": "https://paypal.me/AndreiIvanov420",
   "releaseNotes": "Fixed broken weather icons by replacing dead TinyURL link with HubitatCommunity GitHub source.",
+  "description": "Patched version of OpenWeatherMap-Alerts driver to fix broken image links.",
   "drivers": [
     {
       "id": "98234-owm-alerts-fix",
@@ -13,6 +17,5 @@
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/OpenWeatherMap/OpenWeatherMap.groovy",
       "required": true
     }
-  ],
-  "description": "This is a patched version of the original 'OpenWeatherMap-Alerts' driver by Matthew (Scottma61). I do not claim ownership of this code; this release solely exists to fix the broken image links (TinyURL) that were preventing weather icons from displaying on dashboards. All original logic and credits remain with the original author."
+  ]
 }
