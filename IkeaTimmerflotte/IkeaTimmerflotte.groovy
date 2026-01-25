@@ -6,11 +6,14 @@
  * Features: Auto-detection, robust Endpoint targeting, Aniva styling.
  *
  * Author: Aniva
- * Date: 2026-01-03
+ * Date: 2026-01-24
  */
 
+import groovy.transform.Field
 import hubitat.device.HubAction
 import hubitat.device.Protocol
+
+@Field static final String DRIVER_VERSION = "1.0.12"
 
 metadata {
     definition (name: "IKEA TIMMERFLOTTE Matter Sensor", namespace: "aniva", author: "Aniva") {
@@ -57,7 +60,7 @@ metadata {
     }
 }
 
-def driverVersion() { return "1.0.11" }
+def driverVersion() { return DRIVER_VERSION }
 
 void logsOff() {
     log.warn "Debug logging disabled..."
@@ -71,6 +74,8 @@ void installed() {
 
 void updated() {
     log.info "Updated..."
+    // Note: We do NOT call configure() here automatically to avoid flooding network on simple preference changes.
+    // User should hit Configure manually if they want to re-subscribe.
     initialize()
 }
 
@@ -81,6 +86,9 @@ void initialize() {
     log.info "${device.displayName} initialized (Driver v${driverVersion()})"
     
     if (logEnable) runIn(1800, logsOff)
+    
+    // FIX: Refresh on startup to ensure we have data if hub rebooted
+    refresh()
 }
 
 void configure() {
@@ -98,7 +106,10 @@ void configure() {
     // Endpoint 00: Battery
     paths.add(matter.attributePath(0x00, 0x002F, 0x000C)) 
 
-    String cmd = matter.cleanSubscribe(1, 0xFFFF, paths)
+    // FIX: Changed 0xFFFF (18h) to 3600 (1h) for Max Interval
+    // This forces a heartbeat every hour even if values don't change.
+    String cmd = matter.cleanSubscribe(1, 3600, paths)
+    
     if (logEnable) log.debug "Sending Matter Subscribe CMD: ${cmd}"
     sendHubCommand(new HubAction(cmd, Protocol.MATTER))
     
@@ -121,7 +132,7 @@ void refresh() {
 void parse(String description) {
     // LOG EVERYTHING: Runs before parsing to capture all incoming traffic
     if (logEnable) log.debug "RAW DATA: ${description}"
-    
+     
     Map descMap = matter.parseDescriptionAsMap(description)
     if (logEnable && descMap) log.debug "PARSED MAP: ${descMap}"
     
