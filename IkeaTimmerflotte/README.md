@@ -9,6 +9,7 @@ This driver is designed to work with the **IKEA DIRIGERA** hub acting as the Thr
 * **Full Sensor Support:** Reads Temperature, Relative Humidity, and Battery levels.
 * **Robust Connectivity:** Uses Matter Helper libraries for clean subscriptions and endpoint targeting (Temp: `01`, Hum: `02`, Bat: `00`).
 * **Aniva Standard Styling:** Custom HTML header with version tracking and links.
+* **Safety Polling:** Built-in "Safety Net" polling to ensure data updates even if the device sleeps through a report cycle.
 
 ## Architecture & Network Requirements
 
@@ -47,6 +48,20 @@ graph LR
     * Click **New Driver**.
     * Paste the content of `IkeaTimmerflotte.groovy`.
     * Click **Save**.
+
+## Configuration & Troubleshooting
+
+If you notice gaps in your temperature history (e.g., no reports for 12+ hours), it means the device slept through its reporting window. This driver includes a **Safety Poll** feature to fix this.
+
+### Setting Reporting Intervals
+1.  Go to the **Device Page**.
+2.  Look for **"Safety Poll Interval"** in the Preferences.
+3.  Set it to **1 Hour** or **3 Hours**.
+    * *This forces the Hub to ask the device for data, acting as a backup if the device forgets to report.*
+4.  Click **Save Preferences**.
+5.  **Critical:** After saving, press the **physical button** on the sensor once to wake it up, then immediately click the **`Configure`** button in the driver.
+
+<img src="images/hubitat_driver_prefs_reporting_interval_example.png" alt="Reporting Interval Settings" width="800">
 
 ## Pairing Instructions
 
