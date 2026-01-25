@@ -6,14 +6,14 @@
  * Features: Auto-detection, robust Endpoint targeting, Aniva styling.
  *
  * Author: Aniva
- * Date: 2026-01-24
+ * Date: 2026-01-25
  */
 
 import groovy.transform.Field
 import hubitat.device.HubAction
 import hubitat.device.Protocol
 
-@Field static final String DRIVER_VERSION = "1.0.12"
+@Field static final String DRIVER_VERSION = "1.0.13"
 
 metadata {
     definition (name: "IKEA TIMMERFLOTTE Matter Sensor", namespace: "aniva", author: "Aniva") {
@@ -53,10 +53,12 @@ metadata {
             </div>
         </div>"""
         
-        input "logEnable", "bool", title: "Enable Debug Logging", defaultValue: true
-        input "txtEnable", "bool", title: "Enable Description Text", defaultValue: true
+        input "pollInterval", "enum", title: "Safety Poll Interval", description: "Force a refresh periodically (Backup for missed reports)", defaultValue: "0", options: ["0":"Disabled", "3600":"1 Hour", "10800":"3 Hours", "21600":"6 Hours", "43200":"12 Hours"]
         input "tempOffset", "decimal", title: "Temperature Offset", defaultValue: 0.0
         input "humOffset", "decimal", title: "Humidity Offset", defaultValue: 0.0
+        
+        input "logEnable", "bool", title: "Enable Debug Logging", defaultValue: true
+        input "txtEnable", "bool", title: "Enable Description Text", defaultValue: true
     }
 }
 
@@ -74,25 +76,37 @@ void installed() {
 
 void updated() {
     log.info "Updated..."
-    // Note: We do NOT call configure() here automatically to avoid flooding network on simple preference changes.
-    // User should hit Configure manually if they want to re-subscribe.
     initialize()
 }
 
 void initialize() {
     sendEvent(name: "_version", value: driverVersion())
-    
-    // FORCE LOG: This will print regardless of logEnable settings
-    log.info "${device.displayName} initialized (Driver v${driverVersion()})"
-    
+    if (logEnable) log.info "${device.displayName} initialized (Driver v${driverVersion()})"
     if (logEnable) runIn(1800, logsOff)
     
-    // FIX: Refresh on startup to ensure we have data if hub rebooted
+    // Manage Polling Schedule
+    unschedule("refresh")
+    if (pollInterval && pollInterval != "0") {
+        int seconds = pollInterval as int
+        if (logEnable) log.info "Scheduling Safety Poll every ${seconds} seconds."
+        runIn(seconds, "scheduledPoll")
+    }
+    
     refresh()
 }
 
+void scheduledPoll() {
+    if (logEnable) log.debug "Performing Safety Poll..."
+    refresh()
+    
+    // Reschedule next poll
+    if (pollInterval && pollInterval != "0") {
+        runIn((pollInterval as int), "scheduledPoll")
+    }
+}
+
 void configure() {
-    // Ensure version state is updated
+    // Ensure state is updated
     initialize()
     
     if (logEnable) log.info "--- Configure: Sending cleanSubscribe commands ---"
@@ -106,14 +120,14 @@ void configure() {
     // Endpoint 00: Battery
     paths.add(matter.attributePath(0x00, 0x002F, 0x000C)) 
 
-    // FIX: Changed 0xFFFF (18h) to 3600 (1h) for Max Interval
-    // This forces a heartbeat every hour even if values don't change.
-    String cmd = matter.cleanSubscribe(1, 3600, paths)
+    // FIX: Increased Min Interval to 10s (some devices reject 1s)
+    // Max Interval 3600s (1 hour)
+    String cmd = matter.cleanSubscribe(10, 3600, paths)
     
     if (logEnable) log.debug "Sending Matter Subscribe CMD: ${cmd}"
     sendHubCommand(new HubAction(cmd, Protocol.MATTER))
     
-    log.warn "Configuration sent. Press sensor button to wake device."
+    log.warn "Configuration sent. IF DEVICE IS ASLEEP, THIS WILL FAIL. Press sensor button now!"
 }
 
 void refresh() {
