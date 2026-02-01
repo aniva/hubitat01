@@ -1,13 +1,13 @@
 {
   "packageName": "WiMeter Cloud Bridge",
   "author": "Aniva",
-  "version": "4.21",
+  "version": "4.22",
   "minimumHEVersion": "2.3.0",
   "dateReleased": "2026-01-01",
   "documentationLink": "https://github.com/aniva/hubitat01/blob/master/WimeterDriver/README.md",
   "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
   "payPalUrl": "https://paypal.me/AndreiIvanov420",
-  "releaseNotes": "v4.21 - Added \"Offline\" state (Black Tile) & Aniva Header and other UX improvements.",
+  "releaseNotes": "v4.22 - Added \"Offline\" state (Black Tile) & Aniva Header and other UX improvements.",
   "drivers": [
     {
       "id": "92d05738-9572-4d04-9549-044738734960",

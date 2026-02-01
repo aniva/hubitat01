@@ -1,16 +1,16 @@
 /**
  * WiMeter Cloud Bridge (Parent)
  *
+ * v4.22 - UI Simplification: Switched to Static Color Legend to avoid render sync issues.
  * v4.21 - UX Improvements: Table refresh optimization.
- * v4.20 - BUGFIX: Added safety check for null 'reading' values.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.21"
+@Field static final String DRIVER_VERSION = "4.22"
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.21") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.22") {
         capability "PowerMeter" 
         capability "EnergyMeter"
         capability "Refresh"
@@ -27,20 +27,16 @@ metadata {
         attribute "icon", "string"
         attribute "htmlIcon", "string"
         attribute "htmlTile", "string"
-        
-        // Semantic State
         attribute "powerLevel", "string"
         
         // PARENT ATTRIBUTES
         attribute "locationPowerRealTimeKw", "number"
         attribute "locationPowerRealTimeW", "number"
         attribute "power", "number" 
-        
         attribute "locationPowerPerDayKwh", "number"
         attribute "locationPowerPerWeekKwh", "number"
         attribute "locationPowerPerMonthKwh", "number"
         attribute "locationPowerPerPeriodKwh", "number"
-        
         attribute "locationCostRealTime", "number"
         attribute "locationCostPerDay", "number"
         attribute "locationCostPerWeek", "number"
@@ -49,12 +45,6 @@ metadata {
     }
     
     preferences {
-        // --- DYNAMIC VARIABLES FOR TABLE ---
-        // We explicitly cast to BigDecimal to ensure formatting is clean
-        def tActive = settings?.threshActive != null ? settings.threshActive : 1.0
-        def tMed = settings?.threshMed != null ? settings.threshMed : 3.0
-        def tHigh = settings?.threshHigh != null ? settings.threshHigh : 6.0
-
         // --- ANIVA STANDARD HEADER ---
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
         <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
@@ -81,24 +71,25 @@ metadata {
         input "pollInterval", "enum", title: "Polling Interval", options: ["Manual", "1 Minute", "5 Minutes", "15 Minutes", "30 Minutes"], defaultValue: "5 Minutes", required: true
         input "debugMode", "bool", title: "Enable Debug Logging (Auto-off in 30 min)", defaultValue: false
         
-        // --- DYNAMIC DASHBOARD TABLE ---
+        // --- STATIC LEGEND (Simpler) ---
         input "headerTile", "paragraph", title: "", description: """
         <div style="background-color:#f0f0f0; padding: 10px; border-radius:5px; margin-top:10px;">
-            <b style="color:#333;">Dashboard Tile Logic (Location)</b>
-            <table style="width:100%; font-size:12px; margin-top:5px; border-collapse:collapse;">
-                <tr style="border-bottom:1px solid #ddd;"><th style="text-align:left;">State</th><th style="text-align:left;">Threshold</th><th style="text-align:left;">Color</th></tr>
-                <tr><td><b>High</b></td><td>> ${tHigh} kW</td><td><span style="color:white; background-color:#c0392b; padding:2px 5px; border-radius:3px;">Red</span></td></tr>
-                <tr><td><b>Medium</b></td><td>> ${tMed} kW</td><td><span style="color:black; background-color:#f1c40f; padding:2px 5px; border-radius:3px;">Yellow</span></td></tr>
-                <tr><td><b>Active</b></td><td>> ${tActive} kW</td><td><span style="color:white; background-color:#27ae60; padding:2px 5px; border-radius:3px;">Green</span></td></tr>
-                <tr><td><b>Idle</b></td><td>< ${tActive} kW</td><td><span style="color:white; background-color:#7f8c8d; padding:2px 5px; border-radius:3px;">Grey</span></td></tr>
-                <tr><td><b>Offline</b></td><td>No Data</td><td><span style="color:white; background-color:#000000; padding:2px 5px; border-radius:3px;">Black</span></td></tr>
+            <b style="color:#333;">Dashboard Tile Legend</b>
+            <div style="font-size:12px; margin-top:5px; color:#555;">The tile background color changes based on the thresholds configured below.</div>
+            <table style="width:100%; font-size:12px; margin-top:8px; border-collapse:collapse;">
+                <tr style="border-bottom:1px solid #ddd;"><th style="text-align:left;">State</th><th style="text-align:left;">Meaning</th><th style="text-align:left;">Color Preview</th></tr>
+                <tr><td><b>High</b></td><td>Heavy Usage</td><td><span style="color:white; background-color:#c0392b; padding:2px 5px; border-radius:3px;">Red</span></td></tr>
+                <tr><td><b>Medium</b></td><td>Moderate Usage</td><td><span style="color:black; background-color:#f1c40f; padding:2px 5px; border-radius:3px;">Yellow</span></td></tr>
+                <tr><td><b>Active</b></td><td>Normal Usage</td><td><span style="color:white; background-color:#27ae60; padding:2px 5px; border-radius:3px;">Green</span></td></tr>
+                <tr><td><b>Idle</b></td><td>Low Usage</td><td><span style="color:white; background-color:#7f8c8d; padding:2px 5px; border-radius:3px;">Grey</span></td></tr>
+                <tr><td><b>Offline</b></td><td>No Connection</td><td><span style="color:white; background-color:#000000; padding:2px 5px; border-radius:3px;">Black</span></td></tr>
             </table>
         </div>
         """
         
-        input "threshHigh", "decimal", title: "High Power [kW]", defaultValue: 6.0, required: true
-        input "threshMed", "decimal", title: "Medium Power [kW]", defaultValue: 3.0, required: true
-        input "threshActive", "decimal", title: "Active Power [kW]", defaultValue: 1.0, required: true
+        input "threshHigh", "decimal", title: "High Power Threshold [kW]", defaultValue: 6.0, required: true
+        input "threshMed", "decimal", title: "Medium Power Threshold [kW]", defaultValue: 3.0, required: true
+        input "threshActive", "decimal", title: "Active Power Threshold [kW]", defaultValue: 1.0, required: true
     }
 }
 

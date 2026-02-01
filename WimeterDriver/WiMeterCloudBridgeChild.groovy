@@ -1,13 +1,13 @@
 /**
  * WiMeter Child Device
  *
- * v4.21 - UI Fixes: Dynamic Icon in Header, Table refresh optimization.
- * v4.20 - BUGFIX: Added safety check for null 'reading' values.
+ * v4.22 - UI Simplification: Switched to Static Color Legend.
+ * v4.21 - UI Fixes: Dynamic Icon in Header.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.21"
+@Field static final String DRIVER_VERSION = "4.22"
 
 metadata {
     definition (name: "WiMeter Child Device", namespace: "aniva", author: "aniva") {
@@ -43,14 +43,8 @@ metadata {
     }
     
     preferences {
-        def tActive = settings?.threshActive != null ? settings.threshActive : 0.4
-        def tMed = settings?.threshMed != null ? settings.threshMed : 1.0
-        def tHigh = settings?.threshHigh != null ? settings.threshHigh : 2.0
-
         // --- DYNAMIC HEADER ICON LOGIC ---
-        // Default Icon
         def iconUrl = "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/images/wimeter_device.png"
-        // Try to fetch custom icon from device state
         try {
             if (device && device.currentValue("icon")) {
                 iconUrl = device.currentValue("icon")
@@ -70,16 +64,18 @@ metadata {
             </div>
         </div>"""
         
+        // --- STATIC LEGEND ---
         input "headerTile", "paragraph", title: "", description: """
         <div style="background-color:#f0f0f0; padding: 10px; border-radius:5px; margin-top:10px;">
-            <b style="color:#333;">Dashboard Tile Logic (Appliance)</b>
-            <table style="width:100%; font-size:12px; margin-top:5px; border-collapse:collapse;">
-                <tr style="border-bottom:1px solid #ddd;"><th style="text-align:left;">State</th><th style="text-align:left;">Threshold</th><th style="text-align:left;">Color</th></tr>
-                <tr><td><b>High</b></td><td>> ${tHigh} kW</td><td><span style="color:white; background-color:#c0392b; padding:2px 5px; border-radius:3px;">Red</span></td></tr>
-                <tr><td><b>Medium</b></td><td>> ${tMed} kW</td><td><span style="color:black; background-color:#f1c40f; padding:2px 5px; border-radius:3px;">Yellow</span></td></tr>
-                <tr><td><b>Active</b></td><td>> ${tActive} kW</td><td><span style="color:white; background-color:#27ae60; padding:2px 5px; border-radius:3px;">Green</span></td></tr>
-                <tr><td><b>Idle</b></td><td>< ${tActive} kW</td><td><span style="color:white; background-color:#7f8c8d; padding:2px 5px; border-radius:3px;">Grey</span></td></tr>
-                <tr><td><b>Offline</b></td><td>No Data</td><td><span style="color:white; background-color:#000000; padding:2px 5px; border-radius:3px;">Black</span></td></tr>
+            <b style="color:#333;">Dashboard Tile Legend</b>
+            <div style="font-size:12px; margin-top:5px; color:#555;">The tile background color changes based on the thresholds configured below.</div>
+            <table style="width:100%; font-size:12px; margin-top:8px; border-collapse:collapse;">
+                <tr style="border-bottom:1px solid #ddd;"><th style="text-align:left;">State</th><th style="text-align:left;">Meaning</th><th style="text-align:left;">Color Preview</th></tr>
+                <tr><td><b>High</b></td><td>Heavy Usage</td><td><span style="color:white; background-color:#c0392b; padding:2px 5px; border-radius:3px;">Red</span></td></tr>
+                <tr><td><b>Medium</b></td><td>Moderate Usage</td><td><span style="color:black; background-color:#f1c40f; padding:2px 5px; border-radius:3px;">Yellow</span></td></tr>
+                <tr><td><b>Active</b></td><td>Normal Usage</td><td><span style="color:white; background-color:#27ae60; padding:2px 5px; border-radius:3px;">Green</span></td></tr>
+                <tr><td><b>Idle</b></td><td>Low Usage</td><td><span style="color:white; background-color:#7f8c8d; padding:2px 5px; border-radius:3px;">Grey</span></td></tr>
+                <tr><td><b>Offline</b></td><td>No Connection</td><td><span style="color:white; background-color:#000000; padding:2px 5px; border-radius:3px;">Black</span></td></tr>
             </table>
         </div>
         """
@@ -145,7 +141,6 @@ void parseItems(items) {
 }
 
 def processItem(item) {
-    // FIX: Check for null reading to avoid toFloat() crash
     if (item.reading == null) return []
 
     def rawVal = item.reading.toFloat()

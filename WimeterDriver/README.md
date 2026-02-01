@@ -1,6 +1,6 @@
 # WiMeter Cloud Bridge for Hubitat
 
-**Version:** v4.21
+**Version:** v4.22
 **Author:** Andrei Ivanov (aniva)
 **License:** Open Source
 
