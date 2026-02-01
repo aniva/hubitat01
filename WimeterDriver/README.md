@@ -70,11 +70,11 @@ To connect Hubitat to your WiMeter, you need your unique **Public Key**.
 1.  Log in to your account at [wimeter.net](https://wimeter.net).
 2.  Click the **User Menu** (top right corner) and select **Account**.
 
-<img src="images/account_menu_example.png" alt="Account Menu" width="50%">
+<img src="images/account_menu_example.png" alt="Account Menu" width="30%">
 
 3.  Scroll down to find your **Public Key**. Copy this string (e.g., `e1f93aec...`).
 
-<img src="images/api_key_example.png" alt="API Key Location" width="50%">
+<img src="images/api_key_example.png" alt="API Key Location" width="30%">
 
 ### Step 2: Configure the Driver
 1.  Open the **WiMeter Cloud Bridge** device in Hubitat.
@@ -82,7 +82,7 @@ To connect Hubitat to your WiMeter, you need your unique **Public Key**.
 3.  Enter your **Target Location Name** exactly as it appears in WiMeter (e.g., "My House").
 4.  Set your desired **Polling Interval** (Default: 5 Minutes).
 
-<img src="images/preferences_example.png" alt="Preferences Example" width="50%">
+<img src="images/preferences_example.png" alt="Preferences Example" width="80%">
 
 5.  Click **Save Preferences**. The driver will immediately attempt to connect.
 
