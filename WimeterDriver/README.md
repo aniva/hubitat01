@@ -7,7 +7,7 @@
 <img src="images/wimeter_device.png" alt="WiMeter Device" width="25%">
 
 ## Overview
-This driver connects your WiMeter energy monitor to Hubitat Elevation. It polls the WiMeter Cloud API to retrieve real-time power (W/kW), energy (kWh), and cost ($) data for your main location and all individual appliances.
+This driver connects your WiMeter energy monitor to Hubitat Elevation. It polls the WiMeter Cloud API to retrieve real time power (W/kW), energy (kWh), and cost ($) data for your main location and all individual appliances.
 
 It uses a **Parent-Child** architecture:
 * **Parent Device:** Represents the main location (e.g., "Andrei's House").
