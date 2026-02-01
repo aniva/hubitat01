@@ -4,6 +4,8 @@
 **Author:** Andrei Ivanov (aniva)
 **License:** Open Source
 
+<img src="images/wimeter_device.png" alt="WiMeter Device" width="25%">
+
 ## Overview
 This driver connects your WiMeter energy monitor to Hubitat Elevation. It polls the WiMeter Cloud API to retrieve real-time power (W/kW), energy (kWh), and cost ($) data for your main location and all individual appliances.
 
@@ -19,7 +21,7 @@ For more information, visit the official site: [https://www.wimeter.ai/](https:/
 ### Architecture
 The integration bridges your physical home wiring data to your Hubitat hub via the WiMeter Cloud API.
 
-```mermaid
+'''mermaid
 graph LR
     subgraph Home_Electrical_Panel
         Breakers(Circuit Breakers)
@@ -43,7 +45,7 @@ graph LR
     API -->|"HTTPS Poll"| Parent
     Parent -->|"Parse & Distribute"| Child1
     Parent -->|"Parse & Distribute"| Child2
-```
+'''
 
 ---
 
@@ -68,11 +70,11 @@ To connect Hubitat to your WiMeter, you need your unique **Public Key**.
 1.  Log in to your account at [wimeter.net](https://wimeter.net).
 2.  Click the **User Menu** (top right corner) and select **Account**.
 
-![Account Menu](images/account_menu_example.png)
+<img src="images/account_menu_example.png" alt="Account Menu" width="50%">
 
 3.  Scroll down to find your **Public Key**. Copy this string (e.g., `e1f93aec...`).
 
-![API Key Location](images/api_key_example.png)
+<img src="images/api_key_example.png" alt="API Key Location" width="50%">
 
 ### Step 2: Configure the Driver
 1.  Open the **WiMeter Cloud Bridge** device in Hubitat.
@@ -80,7 +82,7 @@ To connect Hubitat to your WiMeter, you need your unique **Public Key**.
 3.  Enter your **Target Location Name** exactly as it appears in WiMeter (e.g., "My House").
 4.  Set your desired **Polling Interval** (Default: 5 Minutes).
 
-![Preferences Example](images/preferences_example.png)
+<img src="images/preferences_example.png" alt="Preferences Example" width="50%">
 
 5.  Click **Save Preferences**. The driver will immediately attempt to connect.
 
@@ -100,7 +102,7 @@ The tile changes color dynamically based on power usage or connection status. Yo
 * **Offline:** **Black** (API Error or No Data)
 
 ### Example Dashboard
-![Dashboard Example](images/dashboard_example.png)
+<img src="images/dashboard_example.png" alt="Dashboard Example" width="50%">
 
 ### Fixing the "Question Mark" Icon
 By default, Hubitat assigns a generic **`?`** icon. You can manually assign the correct "Lightning Bolt" icon using the platform's built-in selector.
@@ -109,7 +111,7 @@ By default, Hubitat assigns a generic **`?`** icon. You can manually assign the 
 2.  Filter for **"flash"** or **"bolt"**.
 3.  Select the desired icon.
 
-![Custom Icon Example](images/custom_icon_example.png)
+<img src="images/custom_icon_example.png" alt="Custom Icon Example" width="50%">
 
 ---
 
@@ -130,6 +132,8 @@ If your WiMeter stops reporting data (power outage or internet loss), the driver
     * **ELSE-IF** (powerLevel is "High") THEN
         * Turn on: "Living Room Warning Light" (Red)
     * **END-IF**
+
+<img src="images/rule_machine_example.png" alt="Rule Machine Example" width="50%">
 
 ### Advanced: Bridging to Virtual Omni Sensor
 If you need to sync data to other systems (like HomeKit) that require standard "Power Meter" capabilities, you can bridge the data to a virtual sensor.
