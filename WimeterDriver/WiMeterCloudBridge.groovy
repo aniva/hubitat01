@@ -1,16 +1,16 @@
 /**
  * WiMeter Cloud Bridge (Parent)
  *
+ * v4.20 - BUGFIX: Added safety check for null 'reading' values to prevent parsing crashes.
  * v4.19 - UI Fixes: Polling default visibility, Init logging, Debug auto-off label.
- * v4.18 - Split API URL into Base + Key. Added robust error handling.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.19"
+@Field static final String DRIVER_VERSION = "4.20"
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.19") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.20") {
         capability "PowerMeter" 
         capability "EnergyMeter"
         capability "Refresh"
@@ -112,24 +112,17 @@ def updated() {
 }
 
 def initialize() {
-    // FORCE LOG: Announce Initialization
     log.warn "${device.displayName} initialized (Driver v${driverVersion()})"
-    
     sendEvent(name: "_version", value: driverVersion())
     unschedule()
     
-    // Auto-disable debug logging after 30 minutes
     if(debugMode) runIn(1800, logsOff)
     
-    // Update Child Versions
     childDevices.each { child ->
         if (child.hasCommand("updateVersion")) child.updateVersion(driverVersion())
     }
 
-    // Polling Schedule
-    // Default to 5 Minutes if null
     def interval = pollInterval ?: "5 Minutes"
-    
     switch(interval) {
         case "1 Minute": runEvery1Minute(refresh); break
         case "5 Minutes": runEvery5Minutes(refresh); break
@@ -154,7 +147,7 @@ def refresh() {
     if (debugMode) log.debug "Refreshing v${driverVersion()}..."
 
     if (!apiBaseUrl || !apiKey || !targetLocation) {
-        logError "Missing API Configuration (Base URL, Key, or Location)."
+        logError "Missing API Configuration."
         handleOffline("Missing Config")
         return
     }
@@ -188,7 +181,7 @@ def refresh() {
         handleOffline("HTTP Error: ${e.statusCode}")
     } catch (Exception e) {
         logError "Connection/Parsing Failed: ${e.message}"
-        handleOffline("Invalid Response (Check Key)")
+        handleOffline("Invalid Response/Data")
     }
 }
 
@@ -292,6 +285,9 @@ def updateChildDevice(name, items) {
 }
 
 def calculateValueAndSuffix(item) {
+    // FIX: Check for null reading to avoid toFloat() crash
+    if (item.reading == null) return []
+
     def rawVal = item.reading.toFloat()
     def rawUnit = item.unit ? item.unit.trim() : ""
     def interval = (item.interval != null) ? item.interval.toInteger() : 0
