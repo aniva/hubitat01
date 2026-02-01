@@ -1,16 +1,16 @@
 /**
  * WiMeter Cloud Bridge (Parent)
  *
- * v4.18 - Split API URL into Base + Key. Added robust error handling for invalid keys (Black Tile).
- * v4.17 - Restored original API/Location logic. Added Offline Black Tile & Dynamic Table.
+ * v4.19 - UI Fixes: Polling default visibility, Init logging, Debug auto-off label.
+ * v4.18 - Split API URL into Base + Key. Added robust error handling.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.18"
+@Field static final String DRIVER_VERSION = "4.19"
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.18") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.19") {
         capability "PowerMeter" 
         capability "EnergyMeter"
         capability "Refresh"
@@ -77,8 +77,8 @@ metadata {
         input "apiKey", "text", title: "Public Key", description: "Found in WiMeter: Main Page -> Top Right -> Account -> Public Key", required: true
         input "targetLocation", "text", title: "Target Location Name", required: true, description: "Matches the location attribute in API"
         
-        input "pollInterval", "enum", title: "Polling Interval", options: ["Manual", "1 Minute", "5 Minutes", "15 Minutes", "30 Minutes"], defaultValue: "5 Minutes"
-        input "debugMode", "bool", title: "Enable Debug Logging", defaultValue: false
+        input "pollInterval", "enum", title: "Polling Interval", options: ["Manual", "1 Minute", "5 Minutes", "15 Minutes", "30 Minutes"], defaultValue: "5 Minutes", required: true
+        input "debugMode", "bool", title: "Enable Debug Logging (Auto-off in 30 min)", defaultValue: false
         
         // --- DYNAMIC DASHBOARD TABLE ---
         input "headerTile", "paragraph", title: "", description: """
@@ -103,23 +103,34 @@ metadata {
 
 def driverVersion() { return DRIVER_VERSION }
 
-def installed() { initialize() }
+def installed() { 
+    initialize()
+}
 
 def updated() { 
     initialize()
-    if(debugMode) runIn(1800, logsOff)
 }
 
 def initialize() {
+    // FORCE LOG: Announce Initialization
+    log.warn "${device.displayName} initialized (Driver v${driverVersion()})"
+    
     sendEvent(name: "_version", value: driverVersion())
     unschedule()
+    
+    // Auto-disable debug logging after 30 minutes
+    if(debugMode) runIn(1800, logsOff)
     
     // Update Child Versions
     childDevices.each { child ->
         if (child.hasCommand("updateVersion")) child.updateVersion(driverVersion())
     }
 
-    switch(pollInterval) {
+    // Polling Schedule
+    // Default to 5 Minutes if null
+    def interval = pollInterval ?: "5 Minutes"
+    
+    switch(interval) {
         case "1 Minute": runEvery1Minute(refresh); break
         case "5 Minutes": runEvery5Minutes(refresh); break
         case "15 Minutes": runEvery15Minutes(refresh); break
@@ -142,69 +153,53 @@ def recreateChildDevices() {
 def refresh() {
     if (debugMode) log.debug "Refreshing v${driverVersion()}..."
 
-    // Check Inputs
     if (!apiBaseUrl || !apiKey || !targetLocation) {
         logError "Missing API Configuration (Base URL, Key, or Location)."
         handleOffline("Missing Config")
         return
     }
     
-    // Build URL
     def fullUrl = "${apiBaseUrl}${apiKey}"
     def params = [uri: fullUrl, contentType: 'application/json', timeout: 10]
 
     try {
         httpGet(params) { resp ->
             if (resp.status == 200) {
-                // CASE 1: Valid JSON response
                 if (resp.data) {
-                    // Check for WiMeter specific error: {"ret":0, "msg":""}
                     if (resp.data instanceof Map && resp.data.containsKey("ret") && resp.data.ret == 0) {
                         logError "API returned 'ret:0'. Key may be invalid."
                         handleOffline("Invalid API Key")
                         return
                     }
-                    
-                    // Success Path
                     sendEvent(name: "apiStatus", value: "Online")
                     sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
                     processData(resp.data)
-                    
                 } else {
-                    // CASE 2: Empty Data
                     logError "API returned empty data."
                     handleOffline("Empty Response")
                 }
             } else {
-                // CASE 3: HTTP Error (Non-200)
                 logError "API HTTP Error: ${resp.status}"
                 handleOffline("HTTP Error: ${resp.status}")
             }
         }
     } catch (groovyx.net.http.HttpResponseException e) {
-        // CASE 4: 404/500 Errors often caught here
         logError "HTTP Response Exception: ${e.statusCode} - ${e.message}"
         handleOffline("HTTP Error: ${e.statusCode}")
     } catch (Exception e) {
-        // CASE 5: Malformed JSON / "Not a valid page" text response
-        // When parsing fails (e.g. HTML returned instead of JSON), it falls here
         logError "Connection/Parsing Failed: ${e.message}"
         handleOffline("Invalid Response (Check Key)")
     }
 }
 
-// FORCE OFFLINE STATE
 def handleOffline(String reason) {
     if (debugMode) log.warn "Setting device OFFLINE. Reason: ${reason}"
     
     sendEvent(name: "apiStatus", value: "Offline")
     sendEvent(name: "powerLevel", value: "Offline")
-    sendEvent(name: "power", value: 0) // Force 0W
-    
-    // Update Tile to Black
+    sendEvent(name: "power", value: 0) 
     updateHtmlTile(0, 0, true)
     
-    // Propagate to Children
     childDevices.each { child ->
         if (child.hasCommand("setOffline")) child.setOffline()
     }
@@ -260,7 +255,6 @@ def updateParentState(items) {
         }
     }
 
-    // Determine Power for Tile
     def powerVal = 0.0
     try {
         def powerItem = items.find { it.unit == "kW" || it.unit == "W" }
@@ -276,7 +270,6 @@ def updateParentState(items) {
         powerVal = 0.0
     }
 
-    // Use Helper
     updateHtmlTile(powerVal, 0, false)
 }
 
@@ -333,9 +326,7 @@ def calculateValueAndSuffix(item) {
     return results
 }
 
-// --- HTML TILE GENERATION (Shared Helper) ---
 void updateHtmlTile(powerValKw, costVal, boolean isOffline) {
-    // Read Settings (using Original Variable Names)
     def tHigh = settings?.threshHigh != null ? settings.threshHigh.toBigDecimal() : 6.0
     def tMed = settings?.threshMed != null ? settings.threshMed.toBigDecimal() : 3.0
     def tActive = settings?.threshActive != null ? settings.threshActive.toBigDecimal() : 1.0
@@ -374,7 +365,6 @@ void updateHtmlTile(powerValKw, costVal, boolean isOffline) {
     
     sendEvent(name: "powerLevel", value: levelText)
     
-    // --- EXACT USER CSS BLOCK ---
     String html = """
     <div style='
         width: 95% !important; 

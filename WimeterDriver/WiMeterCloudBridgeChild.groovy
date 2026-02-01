@@ -1,13 +1,12 @@
 /**
  * WiMeter Child Device
  *
- * v4.18 - Version bump to match Parent v4.18.
- * v4.17 - FIXED: Aligned variable names with Parent driver. Added Offline & Table features.
+ * v4.19 - UI Fixes: Init logging, Debug auto-off label.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.18"
+@Field static final String DRIVER_VERSION = "4.19"
 
 metadata {
     definition (name: "WiMeter Child Device", namespace: "aniva", author: "aniva") {
@@ -90,6 +89,7 @@ void updateVersion(String ver) {
 }
 
 void initialize() {
+    log.warn "${device.displayName} initialized (Driver v${driverVersion()})"
     sendEvent(name: "_version", value: driverVersion())
 }
 
@@ -97,7 +97,6 @@ void refresh() {
     parent.refresh()
 }
 
-// Called by Parent when API fails
 void setOffline() {
     sendEvent(name: "power", value: 0)
     sendEvent(name: "powerRealTimeW", value: 0)
@@ -133,7 +132,6 @@ void parseItems(items) {
         }
     }
     
-    // Determine kW for Tile Logic
     def powerKw = (powerW / 1000).toFloat().round(2)
     updateHtmlTile(powerKw, 0, false)
 }
@@ -171,7 +169,6 @@ def processItem(item) {
     return results
 }
 
-// --- HTML TILE GENERATION (Shared Helper) ---
 void updateHtmlTile(powerValKw, costVal, boolean isOffline) {
     def tActive = settings?.threshActive != null ? settings.threshActive.toBigDecimal() : 0.4
     def tMed = settings?.threshMed != null ? settings.threshMed.toBigDecimal() : 1.0
@@ -211,7 +208,6 @@ void updateHtmlTile(powerValKw, costVal, boolean isOffline) {
     
     sendEvent(name: "powerLevel", value: levelText)
     
-    // --- EXACT USER CSS BLOCK ---
     String html = """
     <div style='
         width: 95% !important; 
