@@ -1,15 +1,13 @@
 /**
  * WiMeter Child Device
  *
+ * v4.17 - FIX: Preferences Table now dynamically reads saved settings instead of showing hardcoded defaults.
  * v4.16 - Added "Offline" state (Black Tile) & Aniva Header.
- * v4.15 - Added 'powerLevel' attribute (High/Medium/Active/Idle).
- * v4.14 - Added "Visual CSS" labels to Preferences.
- * v4.13 - Removed color selectors. Updated defaults (0.4/1/2 kW).
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.16"
+@Field static final String DRIVER_VERSION = "4.17"
 
 metadata {
     definition (name: "WiMeter Child Device", namespace: "aniva", author: "aniva") {
@@ -46,6 +44,12 @@ metadata {
     }
     
     preferences {
+        // --- DYNAMIC VARIABLES FOR TABLE ---
+        // This reads the SAVED setting. If null, falls back to default.
+        def tActive = settings?.tileThresholdActive != null ? settings.tileThresholdActive : 0.4
+        def tMed = settings?.tileThresholdMed != null ? settings.tileThresholdMed : 1.0
+        def tHigh = settings?.tileThresholdHigh != null ? settings.tileThresholdHigh : 2.0
+
         // --- ANIVA STANDARD HEADER ---
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
         <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
@@ -60,15 +64,16 @@ metadata {
             </div>
         </div>"""
         
+        // DYNAMIC TABLE (Uses ${tHigh} instead of hardcoded numbers)
         input "headerTile", "paragraph", title: "", description: """
         <div style="background-color:#f0f0f0; padding: 10px; border-radius:5px; margin-top:10px;">
             <b style="color:#333;">Dashboard Tile Logic (Appliance)</b>
             <table style="width:100%; font-size:12px; margin-top:5px; border-collapse:collapse;">
                 <tr style="border-bottom:1px solid #ddd;"><th style="text-align:left;">State</th><th style="text-align:left;">Threshold</th><th style="text-align:left;">Color</th></tr>
-                <tr><td><b>High</b></td><td>> 2.0 kW</td><td><span style="color:white; background-color:#B71C1C; padding:2px 5px; border-radius:3px;">Red</span></td></tr>
-                <tr><td><b>Medium</b></td><td>> 1.0 kW</td><td><span style="color:black; background-color:#FFD600; padding:2px 5px; border-radius:3px;">Yellow</span></td></tr>
-                <tr><td><b>Active</b></td><td>> 0.4 kW</td><td><span style="color:white; background-color:#2E7D32; padding:2px 5px; border-radius:3px;">Green</span></td></tr>
-                <tr><td><b>Idle</b></td><td>< 0.4 kW</td><td><span style="color:white; background-color:#424242; padding:2px 5px; border-radius:3px;">Grey</span></td></tr>
+                <tr><td><b>High</b></td><td>> ${tHigh} kW</td><td><span style="color:white; background-color:#B71C1C; padding:2px 5px; border-radius:3px;">Red</span></td></tr>
+                <tr><td><b>Medium</b></td><td>> ${tMed} kW</td><td><span style="color:black; background-color:#FFD600; padding:2px 5px; border-radius:3px;">Yellow</span></td></tr>
+                <tr><td><b>Active</b></td><td>> ${tActive} kW</td><td><span style="color:white; background-color:#2E7D32; padding:2px 5px; border-radius:3px;">Green</span></td></tr>
+                <tr><td><b>Idle</b></td><td>< ${tActive} kW</td><td><span style="color:white; background-color:#424242; padding:2px 5px; border-radius:3px;">Grey</span></td></tr>
                 <tr><td><b>Offline</b></td><td>No Data</td><td><span style="color:white; background-color:#000000; padding:2px 5px; border-radius:3px;">Black</span></td></tr>
             </table>
         </div>
@@ -168,6 +173,7 @@ def processItem(item) {
 void updateHtmlTile(powerValW, costVal, boolean isOffline) {
     def powerVal = (powerValW / 1000).round(2) 
     
+    // FETCH SETTINGS AGAIN for live logic (safeguard)
     def tActive = (tileThresholdActive != null) ? tileThresholdActive : 0.4
     def tMed = (tileThresholdMed != null) ? tileThresholdMed : 1.0
     def tHigh = (tileThresholdHigh != null) ? tileThresholdHigh : 2.0
