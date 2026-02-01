@@ -14,12 +14,6 @@ It uses a **Parent-Child** architecture:
 ### About WiMeter
 **WiMeter** is a smart, retrofit energy monitoring system designed for residential and commercial electrical panels. It installs directly into your breaker box to provide granular monitoring of up to **28 individual circuits**.
 
-Unlike simple smart plugs or utility meters, WiMeter offers:
-* **Real-time monitoring** of voltage, current, and power factor.
-* **Critical Systems Health Check:** Uses power profiling and temperature sensors to detect equipment malfunctions before failure.
-* **Immediate Insights:** No "learning period" required; data is available immediately after installation.
-* **Universal Compatibility:** Works with 1, 2, or 3-phase systems (100-600V).
-
 For more information, visit the official site: [https://www.wimeter.ai/](https://www.wimeter.ai/)
 
 ### Architecture
@@ -53,38 +47,7 @@ graph LR
 
 ---
 
-## Features
-
-### 1. Zero-Configuration Setup
-Simply enter your WiMeter username and password. The driver will:
-* Authenticate with the Cloud API.
-* Detect your Location (Main Panel).
-* **Automatically Create Child Devices** for every circuit/appliance defined in your account.
-* Auto-correct names if they change on the WiMeter side.
-
-### 2. Live Dashboard Tile (HTML)
-The driver generates a pre-formatted HTML tile (`htmlTile` attribute) that you can display on any Hubitat Dashboard. This tile changes color dynamically based on power usage or connection status.
-
-**Status Logic & Colors:**
-* **High Load:** **Red** (Default: > 6kW)
-* **Medium Load:** **Yellow** (Default: > 3kW)
-* **Active:** **Green** (Default: > 1kW)
-* **Idle:** **Grey** (Default: < 1kW)
-* **Offline:** **Black** (API Error or No Data)
-
-*Note: Thresholds are fully customizable in the Device Preferences.*
-
-### 3. Rule Machine Ready
-This driver exposes a dedicated attribute called **`powerLevel`** specifically for automation logic. Instead of writing complex numeric rules ("If power > 3500 AND power < 5000..."), you can simply write:
-* `IF powerLevel is "High" THEN Turn on Warning Light`
-* `IF powerLevel is "Offline" THEN Send Notification`
-
-### 4. Cost Tracking
-In addition to Watts/Kilowatts, the driver retrieves the calculated **Cost** from the WiMeter platform (Real-time, Daily, Weekly, Monthly), allowing you to build dashboards focused on budget rather than just electrical units.
-
----
-
-## Installation
+## 1. Installation
 
 ### Via Hubitat Package Manager (Recommended)
 1.  Search for **"WiMeter Cloud Bridge"** by Aniva.
@@ -97,43 +60,83 @@ In addition to Watts/Kilowatts, the driver retrieves the calculated **Cost** fro
 
 ---
 
-## Setup & Configuration
+## 2. Setup & Configuration
 
-1.  Open the **WiMeter Cloud Bridge** device.
-2.  Enter your **Username** and **Password** in the Preferences.
-3.  Set your desired **Poll Interval** (Default: 5 minutes).
-4.  (Optional) Adjust the **kW Thresholds** for the colored dashboard tiles.
-5.  Click **Save Preferences**.
-6.  The driver will immediately poll the API, populate the data, and create child devices for your circuits.
+### Step 1: Obtain your API Key
+To connect Hubitat to your WiMeter, you need your unique **Public Key**.
+
+1.  Log in to your account at [wimeter.net](https://wimeter.net).
+2.  Click the **User Menu** (top right corner) and select **Account**.
+
+![Account Menu](images/account_menu_example.png)
+
+3.  Scroll down to find your **Public Key**. Copy this string (e.g., `e1f93aec...`).
+
+![API Key Location](images/api_key_example.png)
+
+### Step 2: Configure the Driver
+1.  Open the **WiMeter Cloud Bridge** device in Hubitat.
+2.  Paste your key into the **Public Key** field.
+3.  Enter your **Target Location Name** exactly as it appears in WiMeter (e.g., "My House").
+4.  Set your desired **Polling Interval** (Default: 5 Minutes).
+
+![Preferences Example](images/preferences_example.png)
+
+5.  Click **Save Preferences**. The driver will immediately attempt to connect.
+
+---
+
+## 3. Dashboard Integration
+
+The driver generates a pre-formatted HTML tile (`htmlTile` attribute) that you can display on any Hubitat Dashboard. This tile creates a clean, "Mobile App" look without requiring complex CSS on the dashboard side.
+
+### Visual Status Logic
+The tile changes color dynamically based on power usage or connection status. You can customize the KW thresholds for these colors in the **Preferences** section.
+
+* **High Load:** **Red** (Default: > 6kW)
+* **Medium Load:** **Yellow** (Default: > 3kW)
+* **Active:** **Green** (Default: > 1kW)
+* **Idle:** **Grey** (Default: < 1kW)
+* **Offline:** **Black** (API Error or No Data)
+
+### Example Dashboard
+![Dashboard Example](images/dashboard_example.png)
 
 ### Fixing the "Question Mark" Icon
-By default, Hubitat assigns a generic **`?`** icon to devices that are purely Power Meters (not switches).
-**Solution:** You can manually assign the correct "Lightning Bolt" icon using the platform's built-in icon selector.
+By default, Hubitat assigns a generic **`?`** icon. You can manually assign the correct "Lightning Bolt" icon using the platform's built-in selector.
 
-1.  Open the **Device Detail** page for your WiMeter device.
-2.  Click the **`?`** icon next to the device name at the top.
-3.  In the popup, filter for **"flash"** or **"bolt"**.
-4.  Select the desired icon and click **Save**.
+1.  Click the **`?`** icon next to the device name.
+2.  Filter for **"flash"** or **"bolt"**.
+3.  Select the desired icon.
 
 ![Custom Icon Example](images/custom_icon_example.png)
 
 ---
 
-## 5. Optional: Bridging to a "Virtual Omni Sensor"
-If you prefer to use standard Hubitat "Power Meter" tiles or integrate with other apps (like HomeKit bridges), you can sync the data to a standard **Virtual Omni Sensor**.
+## 4. Automation (Rule Machine)
 
-### Step 1: Create the Virtual Device
-1.  Go to **Devices** -> **Add Virtual Device**.
-2.  **Device Name:** "House Power Bridge".
-3.  **Type:** **`Virtual Omni Sensor`**.
-4.  Click **Save Device**.
+This driver is designed to make automation easy. Instead of writing complex numeric comparisons ("If power is greater than 3500 but less than 5000..."), use the **`powerLevel`** attribute.
 
-### Step 2: Create the Sync Rule (Rule Machine)
-1.  Open **Rule Machine** -> **Create New Rule**.
-2.  **Trigger:** Capability `Custom Attribute` -> Device `WiMeter Cloud Bridge` -> Attribute `locationPowerRealTimeW` -> `*changed*`.
-3.  **Action:** Run Custom Action -> Capability `Sensor` -> Device "House Power Bridge" -> Command **`setPower`**.
-4.  **Parameter:** Type `Decimal` -> Value `%value%`.
-5.  Click **Done**.
+### Attribute: `powerLevel`
+Values: `Idle`, `Active`, `Medium`, `High`, `Offline`.
+
+### Example Rule: Offline Notification
+If your WiMeter stops reporting data (power outage or internet loss), the driver sets the state to `Offline`.
+
+1.  **Trigger:** `Custom Attribute` -> Device: `WiMeter Bridge` -> Attribute: `powerLevel` -> **Changed**.
+2.  **Actions:**
+    * **IF** (powerLevel is "Offline") THEN
+        * Notify Phone: "⚠️ WiMeter is Offline! Check main power."
+    * **ELSE-IF** (powerLevel is "High") THEN
+        * Turn on: "Living Room Warning Light" (Red)
+    * **END-IF**
+
+### Advanced: Bridging to Virtual Omni Sensor
+If you need to sync data to other systems (like HomeKit) that require standard "Power Meter" capabilities, you can bridge the data to a virtual sensor.
+
+1.  Create a Virtual Device using the **`Virtual Omni Sensor`** driver.
+2.  Create a Rule that triggers on `locationPowerRealTimeW` changes.
+3.  Action: `Run Custom Action` -> `setPower` -> value `%value%` on the virtual sensor.
 
 ---
 
