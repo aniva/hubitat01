@@ -1,13 +1,13 @@
 /**
  * WiMeter Child Device
  *
+ * v4.21 - UI Fixes: Dynamic Icon in Header, Table refresh optimization.
  * v4.20 - BUGFIX: Added safety check for null 'reading' values.
- * v4.19 - UI Fixes: Init logging, Debug auto-off label.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.20"
+@Field static final String DRIVER_VERSION = "4.21"
 
 metadata {
     definition (name: "WiMeter Child Device", namespace: "aniva", author: "aniva") {
@@ -47,10 +47,20 @@ metadata {
         def tMed = settings?.threshMed != null ? settings.threshMed : 1.0
         def tHigh = settings?.threshHigh != null ? settings.threshHigh : 2.0
 
+        // --- DYNAMIC HEADER ICON LOGIC ---
+        // Default Icon
+        def iconUrl = "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/images/wimeter_device.png"
+        // Try to fetch custom icon from device state
+        try {
+            if (device && device.currentValue("icon")) {
+                iconUrl = device.currentValue("icon")
+            }
+        } catch(e) { /* Fallback */ }
+
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
         <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
             <div style='display: flex; align-items: center;'>
-                <img src='https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/images/wimeter_device.png' 
+                <img src='${iconUrl}' 
                      style='height: 60px; width: 60px; object-fit: contain; margin-right: 15px;' 
                      onerror="this.src='https://raw.githubusercontent.com/hubitat/HubitatPublic/master/examples/drivers/icons/energy-meter.png'">
                 <div>

@@ -1,16 +1,16 @@
 /**
  * WiMeter Cloud Bridge (Parent)
  *
- * v4.20 - BUGFIX: Added safety check for null 'reading' values to prevent parsing crashes.
- * v4.19 - UI Fixes: Polling default visibility, Init logging, Debug auto-off label.
+ * v4.21 - UX Improvements: Table refresh optimization.
+ * v4.20 - BUGFIX: Added safety check for null 'reading' values.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.20"
+@Field static final String DRIVER_VERSION = "4.21"
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.20") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.21") {
         capability "PowerMeter" 
         capability "EnergyMeter"
         capability "Refresh"
@@ -50,6 +50,7 @@ metadata {
     
     preferences {
         // --- DYNAMIC VARIABLES FOR TABLE ---
+        // We explicitly cast to BigDecimal to ensure formatting is clean
         def tActive = settings?.threshActive != null ? settings.threshActive : 1.0
         def tMed = settings?.threshMed != null ? settings.threshMed : 3.0
         def tHigh = settings?.threshHigh != null ? settings.threshHigh : 6.0
@@ -285,7 +286,6 @@ def updateChildDevice(name, items) {
 }
 
 def calculateValueAndSuffix(item) {
-    // FIX: Check for null reading to avoid toFloat() crash
     if (item.reading == null) return []
 
     def rawVal = item.reading.toFloat()
