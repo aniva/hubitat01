@@ -1,6 +1,6 @@
 # WiMeter Cloud Bridge for Hubitat
 
-**Version:** v4.15
+**Version:** v4.16
 **Author:** Andrei Ivanov (aniva)
 **License:** Open Source
 
@@ -27,69 +27,87 @@ The integration bridges your physical home wiring data to your Hubitat hub via t
 
 ```mermaid
 graph LR
-    A[Home Wiring] <-->|Sensors| B(Physical WiMeter Device)
-    B -->|Uploads Data| C{WiMeter Cloud Services}
-    D[Hubitat Driver] -- GET API Call --> C
-    D -->|Updates| E[Parent Device]
-    D -->|Updates| F[Child Devices]
-    E --> G[Hubitat Dashboards]
-    F --> G
+    subgraph Home_Electrical_Panel
+        Breakers(Circuit Breakers)
+        CTs(CT Clamps)
+        WiMeter(WiMeter Device<br/>WiFi)
+    end
+
+    subgraph Cloud_Infrastructure
+        API(WiMeter Cloud API<br/>JSON)
+    end
+
+    subgraph Hubitat_Elevation
+        Parent(Parent Driver<br/>Location & Total Power)
+        Child1(Child Device<br/>Appliance 1)
+        Child2(Child Device<br/>Appliance 2)
+    end
+
+    Breakers --- CTs
+    CTs --> WiMeter
+    WiMeter -->|"MQTT / WiFi"| API
+    API -->|"HTTPS Poll"| Parent
+    Parent -->|"Parse & Distribute"| Child1
+    Parent -->|"Parse & Distribute"| Child2
 ```
 
 ---
 
-## 1. Installation (Hubitat Package Manager)
-The driver is available in the official **Hubitat Package Manager (HPM)** repository.
+## Features
 
-1.  Open **Hubitat Package Manager** app.
-2.  Select **Install**.
-3.  Select **Search by Keywords** and type `WiMeter`.
-4.  Select **WiMeter Cloud Bridge** from the results and click **Install**.
-5.  *That's it! HPM will now keep your driver up to date automatically.*
+### 1. Zero-Configuration Setup
+Simply enter your WiMeter username and password. The driver will:
+* Authenticate with the Cloud API.
+* Detect your Location (Main Panel).
+* **Automatically Create Child Devices** for every circuit/appliance defined in your account.
+* Auto-correct names if they change on the WiMeter side.
 
----
+### 2. Live Dashboard Tile (HTML)
+The driver generates a pre-formatted HTML tile (`htmlTile` attribute) that you can display on any Hubitat Dashboard. This tile changes color dynamically based on power usage or connection status.
 
-## 2. Configuration
-After installing the driver, open the **WiMeter Cloud Bridge** device page and scroll to the **Preferences** section.
+**Status Logic & Colors:**
+* **High Load:** **Red** (Default: > 6kW)
+* **Medium Load:** **Yellow** (Default: > 3kW)
+* **Active:** **Green** (Default: > 1kW)
+* **Idle:** **Grey** (Default: < 1kW)
+* **Offline:** **Black** (API Error or No Data)
 
-### Required Settings
-1.  **WiMeter API URL:** Paste your personal API key URL here (e.g., `https://wimeter.net/v1/pubmatrix?key=...`).
-2.  **Target Location Name:** Enter the exact name of the location as it appears in your WiMeter dashboard (e.g., `Andrei's House`).
-3.  **Polling Interval:** Select how often Hubitat should check for new data.
-    * *Recommended:* **5 Minutes**.
-4.  **Enable Debug Logging:** Turn this **On** if troubleshooting connection issues.
+*Note: Thresholds are fully customizable in the Device Preferences.*
 
-*(Click **Save Preferences** after making changes)*
+### 3. Rule Machine Ready
+This driver exposes a dedicated attribute called **`powerLevel`** specifically for automation logic. Instead of writing complex numeric rules ("If power > 3500 AND power < 5000..."), you can simply write:
+* `IF powerLevel is "High" THEN Turn on Warning Light`
+* `IF powerLevel is "Offline" THEN Send Notification`
 
----
-
-## 3. Dashboard Setup: The "Live Status" Card
-This driver generates a pre-formatted, color-coded HTML tile (Green/Yellow/Red) that displays real-time power usage.
-
-![WiMeter Dashboard Example](images/dashboard_example.png)
-
-### Color Thresholds & Configuration
-You can customize the specific **kW thresholds** that trigger each color in the device **Preferences**. This allows you to differentiate between "Idle" states and "High Load" states.
-
-* **Idle (Grey):** Device is off or standby (Below "Active" threshold).
-* <span style="color:#27ae60">**Low/Active (Green):**</span> Normal operation (Below "Medium" threshold).
-* <span style="color:#f1c40f">**Medium (Yellow):**</span> Moderate loads (Below "High" threshold).
-* <span style="color:#c0392b">**High (Red):**</span> Heavy loads (Above "High" threshold).
-
-![Preferences Example](images/preferences_example.png)
-
-### How to Add the Tile
-1.  Open your Hubitat **Dashboard**.
-2.  Click **Add Tile (+)**.
-3.  **Pick a Device:** Select your `WiMeter Cloud Bridge` (or any Child Device).
-4.  **Pick a Template:** Select **Attribute**.
-5.  **Pick an Attribute:** Select **`html_tile`**.
-6.  **Click Add Tile.**
+### 4. Cost Tracking
+In addition to Watts/Kilowatts, the driver retrieves the calculated **Cost** from the WiMeter platform (Real-time, Daily, Weekly, Monthly), allowing you to build dashboards focused on budget rather than just electrical units.
 
 ---
 
-## 4. Custom Icons (Important)
-**Issue:** By default, Hubitat assigns a generic **`?`** icon to devices that are purely Power Meters (not switches).
+## Installation
+
+### Via Hubitat Package Manager (Recommended)
+1.  Search for **"WiMeter Cloud Bridge"** by Aniva.
+2.  Install the package (this includes both Parent and Child drivers).
+
+### Manual Installation
+1.  Install `WiMeterCloudBridge.groovy` (Parent Driver).
+2.  Install `WiMeterCloudBridgeChild.groovy` (Child Driver).
+3.  Create a new Virtual Device using the **WiMeter Cloud Bridge** driver.
+
+---
+
+## Setup & Configuration
+
+1.  Open the **WiMeter Cloud Bridge** device.
+2.  Enter your **Username** and **Password** in the Preferences.
+3.  Set your desired **Poll Interval** (Default: 5 minutes).
+4.  (Optional) Adjust the **kW Thresholds** for the colored dashboard tiles.
+5.  Click **Save Preferences**.
+6.  The driver will immediately poll the API, populate the data, and create child devices for your circuits.
+
+### Fixing the "Question Mark" Icon
+By default, Hubitat assigns a generic **`?`** icon to devices that are purely Power Meters (not switches).
 **Solution:** You can manually assign the correct "Lightning Bolt" icon using the platform's built-in icon selector.
 
 1.  Open the **Device Detail** page for your WiMeter device.
@@ -120,5 +138,7 @@ If you prefer to use standard Hubitat "Power Meter" tiles or integrate with othe
 ---
 
 ## ❤️ Support
-If you find this driver useful, you can support the development here:
-[PayPal.me/AndreiIvanov420](https://paypal.me/AndreiIvanov420)
+If you find this driver useful, consider supporting the development:
+
+* [PayPal Support](https://paypal.me/AndreiIvanov420)
+* [GitHub Repository](https://github.com/aniva)
