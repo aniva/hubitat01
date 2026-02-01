@@ -21,7 +21,7 @@ For more information, visit the official site: [https://www.wimeter.ai/](https:/
 ### Architecture
 The integration bridges your physical home wiring data to your Hubitat hub via the WiMeter Cloud API.
 
-'''mermaid
+```mermaid
 graph LR
     subgraph Home_Electrical_Panel
         Breakers(Circuit Breakers)
@@ -45,7 +45,7 @@ graph LR
     API -->|"HTTPS Poll"| Parent
     Parent -->|"Parse & Distribute"| Child1
     Parent -->|"Parse & Distribute"| Child2
-'''
+```
 
 ---
 
