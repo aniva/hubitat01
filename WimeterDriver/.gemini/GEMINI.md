@@ -11,6 +11,7 @@ This project consists of a **Parent Driver** and a **Child Driver** that bridge 
 
 ## 2. API Data Structure
 The driver consumes a JSON response that may be formatted as a List or a Map.
+WiMeter base URL end point is: https://wimeter.net/v1/pubmatrix?key=\<Public Key\>, where key comes into driver config from WiMeter Account page.
 **Key API Constraint:** The API splits data across multiple packets. You might get "Power" in one packet and "Cost" in another. The driver must **merge** these based on the device name.
 
 ### JSON Sample

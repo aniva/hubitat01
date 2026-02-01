@@ -1,13 +1,13 @@
 /**
  * WiMeter Child Device
  *
- * v4.17 - FIX: Preferences Table now dynamically reads saved settings instead of showing hardcoded defaults.
- * v4.16 - Added "Offline" state (Black Tile) & Aniva Header.
+ * v4.18 - Version bump to match Parent v4.18.
+ * v4.17 - FIXED: Aligned variable names with Parent driver. Added Offline & Table features.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.17"
+@Field static final String DRIVER_VERSION = "4.18"
 
 metadata {
     definition (name: "WiMeter Child Device", namespace: "aniva", author: "aniva") {
@@ -21,9 +21,7 @@ metadata {
         attribute "icon", "string"
         attribute "htmlIcon", "string"
         attribute "htmlTile", "string"
-        
-        // Semantic State
-        attribute "powerLevel", "string" // High, Medium, Active, Idle, Offline
+        attribute "powerLevel", "string" 
 
         attribute "powerRealTimeKw", "number"
         attribute "powerRealTimeW", "number"
@@ -41,16 +39,16 @@ metadata {
         attribute "costPerPeriod", "number"
         
         command "setOffline"
+        command "updateVersion", ["string"]
     }
     
     preferences {
-        // --- DYNAMIC VARIABLES FOR TABLE ---
-        // This reads the SAVED setting. If null, falls back to default.
-        def tActive = settings?.tileThresholdActive != null ? settings.tileThresholdActive : 0.4
-        def tMed = settings?.tileThresholdMed != null ? settings.tileThresholdMed : 1.0
-        def tHigh = settings?.tileThresholdHigh != null ? settings.tileThresholdHigh : 2.0
+        // DYNAMIC VARIABLES FOR TABLE (Defaults: 0.4 / 1.0 / 2.0)
+        def tActive = settings?.threshActive != null ? settings.threshActive : 0.4
+        def tMed = settings?.threshMed != null ? settings.threshMed : 1.0
+        def tHigh = settings?.threshHigh != null ? settings.threshHigh : 2.0
 
-        // --- ANIVA STANDARD HEADER ---
+        // ANIVA HEADER
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
         <div style='display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fafafa; margin-bottom: 10px;'>
             <div style='display: flex; align-items: center;'>
@@ -64,24 +62,24 @@ metadata {
             </div>
         </div>"""
         
-        // DYNAMIC TABLE (Uses ${tHigh} instead of hardcoded numbers)
+        // DYNAMIC TABLE
         input "headerTile", "paragraph", title: "", description: """
         <div style="background-color:#f0f0f0; padding: 10px; border-radius:5px; margin-top:10px;">
             <b style="color:#333;">Dashboard Tile Logic (Appliance)</b>
             <table style="width:100%; font-size:12px; margin-top:5px; border-collapse:collapse;">
                 <tr style="border-bottom:1px solid #ddd;"><th style="text-align:left;">State</th><th style="text-align:left;">Threshold</th><th style="text-align:left;">Color</th></tr>
-                <tr><td><b>High</b></td><td>> ${tHigh} kW</td><td><span style="color:white; background-color:#B71C1C; padding:2px 5px; border-radius:3px;">Red</span></td></tr>
-                <tr><td><b>Medium</b></td><td>> ${tMed} kW</td><td><span style="color:black; background-color:#FFD600; padding:2px 5px; border-radius:3px;">Yellow</span></td></tr>
-                <tr><td><b>Active</b></td><td>> ${tActive} kW</td><td><span style="color:white; background-color:#2E7D32; padding:2px 5px; border-radius:3px;">Green</span></td></tr>
-                <tr><td><b>Idle</b></td><td>< ${tActive} kW</td><td><span style="color:white; background-color:#424242; padding:2px 5px; border-radius:3px;">Grey</span></td></tr>
+                <tr><td><b>High</b></td><td>> ${tHigh} kW</td><td><span style="color:white; background-color:#c0392b; padding:2px 5px; border-radius:3px;">Red</span></td></tr>
+                <tr><td><b>Medium</b></td><td>> ${tMed} kW</td><td><span style="color:black; background-color:#f1c40f; padding:2px 5px; border-radius:3px;">Yellow</span></td></tr>
+                <tr><td><b>Active</b></td><td>> ${tActive} kW</td><td><span style="color:white; background-color:#27ae60; padding:2px 5px; border-radius:3px;">Green</span></td></tr>
+                <tr><td><b>Idle</b></td><td>< ${tActive} kW</td><td><span style="color:white; background-color:#7f8c8d; padding:2px 5px; border-radius:3px;">Grey</span></td></tr>
                 <tr><td><b>Offline</b></td><td>No Data</td><td><span style="color:white; background-color:#000000; padding:2px 5px; border-radius:3px;">Black</span></td></tr>
             </table>
         </div>
         """
         
-        input "tileThresholdActive", "decimal", title: "<span style='color:#2E7D32; font-weight:bold;'>Active Threshold (kW)</span>", description: "Default: 0.4", defaultValue: 0.4
-        input "tileThresholdMed", "decimal", title: "<span style='color:#F9A825; font-weight:bold;'>Medium Threshold (kW)</span>", description: "Default: 1.0", defaultValue: 1.0
-        input "tileThresholdHigh", "decimal", title: "<span style='color:#B71C1C; font-weight:bold;'>High Threshold (kW)</span>", description: "Default: 2.0", defaultValue: 2.0
+        input "threshActive", "decimal", title: "Active Threshold (kW)", defaultValue: 0.4
+        input "threshMed", "decimal", title: "Medium Threshold (kW)", defaultValue: 1.0
+        input "threshHigh", "decimal", title: "High Threshold (kW)", defaultValue: 2.0
     }
 }
 
@@ -106,16 +104,15 @@ void setOffline() {
     sendEvent(name: "powerRealTimeKw", value: 0)
     sendEvent(name: "powerLevel", value: "Offline")
     
-    updateHtmlTile(0, 0, true) // isOffline = true
+    updateHtmlTile(0, 0, true) 
 }
 
 void parseItems(items) {
     def iconItem = items.find { it.url }
     if (iconItem) {
-        def cleanUrl = iconItem.url.replace("\\/", "/")
-        if (device.currentValue("icon") != cleanUrl) {
-            sendEvent(name: "icon", value: cleanUrl)
-            String html = "<img src='${cleanUrl}' style='width:50px; height:50px;'>"
+        if (device.currentValue("icon") != iconItem.url) {
+            sendEvent(name: "icon", value: iconItem.url)
+            String html = "<img src='${iconItem.url}' style='width:50px; height:50px;'>"
             sendEvent(name: "htmlIcon", value: html)
         }
     }
@@ -135,7 +132,10 @@ void parseItems(items) {
             sendEvent(name: attrName, value: res.value, unit: res.unit)
         }
     }
-    updateHtmlTile(powerW, 0, false)
+    
+    // Determine kW for Tile Logic
+    def powerKw = (powerW / 1000).toFloat().round(2)
+    updateHtmlTile(powerKw, 0, false)
 }
 
 def processItem(item) {
@@ -143,6 +143,7 @@ def processItem(item) {
     def rawUnit = item.unit ? item.unit.trim() : ""
     def interval = (item.interval != null) ? item.interval.toInteger() : 0
     def results = []
+    
     def getSuffix = { i ->
         if (i == 0) return "RealTime"
         else if (i == 86400) return "PerDay"
@@ -163,32 +164,30 @@ def processItem(item) {
             results << [value: val_kW, unit: "kW", baseType: "power", suffix: suffix, unitSuffix: "Kw"]
             results << [value: val_W, unit: "W", baseType: "power", suffix: suffix, unitSuffix: "W"]
         } else {
-            results << [value: rawVal.round(2), unit: "kWh", baseType: "power", suffix: suffix, unitSuffix: "Kwh"]
+            def val_kWh = (rawUnit == "W" || rawUnit == "Wh") ? (rawVal / 1000).round(3) : rawVal.round(3)
+            results << [value: val_kWh, unit: "kWh", baseType: "power", suffix: suffix, unitSuffix: "Kwh"]
         }
     }
     return results
 }
 
-// --- HTML TILE GENERATION (Restored User's CSS) ---
-void updateHtmlTile(powerValW, costVal, boolean isOffline) {
-    def powerVal = (powerValW / 1000).round(2) 
+// --- HTML TILE GENERATION (Shared Helper) ---
+void updateHtmlTile(powerValKw, costVal, boolean isOffline) {
+    def tActive = settings?.threshActive != null ? settings.threshActive.toBigDecimal() : 0.4
+    def tMed = settings?.threshMed != null ? settings.threshMed.toBigDecimal() : 1.0
+    def tHigh = settings?.threshHigh != null ? settings.threshHigh.toBigDecimal() : 2.0
     
-    // FETCH SETTINGS AGAIN for live logic (safeguard)
-    def tActive = (tileThresholdActive != null) ? tileThresholdActive : 0.4
-    def tMed = (tileThresholdMed != null) ? tileThresholdMed : 1.0
-    def tHigh = (tileThresholdHigh != null) ? tileThresholdHigh : 2.0
-    
-    String cRed = "#B71C1C"
-    String cYellow = "#FFD600"
-    String cGreen = "#2E7D32"
-    String cGrey = "#424242"
+    String cRed = "#c0392b"
+    String cYellow = "#f1c40f"
+    String cGreen = "#27ae60"
+    String cGrey = "#7f8c8d"
     String cBlack = "#000000"
     
     def cardColor = cGrey
     def levelText = "Idle"
     
     String topLabel = "Power"
-    String mainValue = "${powerVal}"
+    String mainValue = "${powerValKw}"
     String unitSuffix = "kW"
 
     if (isOffline) {
@@ -198,13 +197,13 @@ void updateHtmlTile(powerValW, costVal, boolean isOffline) {
         mainValue = "OFFLINE"
         unitSuffix = ""
     } else {
-        if (powerVal >= tHigh) {
+        if (powerValKw >= tHigh) {
             cardColor = cRed
             levelText = "High"
-        } else if (powerVal >= tMed) {
+        } else if (powerValKw >= tMed) {
             cardColor = cYellow
             levelText = "Medium"
-        } else if (powerVal >= tActive) {
+        } else if (powerValKw >= tActive) {
             cardColor = cGreen
             levelText = "Active"
         }

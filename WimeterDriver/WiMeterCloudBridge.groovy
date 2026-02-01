@@ -1,16 +1,16 @@
 /**
  * WiMeter Cloud Bridge (Parent)
  *
- * v4.17 - FIX: Preferences Table now dynamically reads saved settings instead of showing hardcoded defaults.
- * v4.16 - Added "Offline" state (Black Tile) & Aniva Header.
+ * v4.18 - Split API URL into Base + Key. Added robust error handling for invalid keys (Black Tile).
+ * v4.17 - Restored original API/Location logic. Added Offline Black Tile & Dynamic Table.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.17"
+@Field static final String DRIVER_VERSION = "4.18"
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.17") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.18") {
         capability "PowerMeter" 
         capability "EnergyMeter"
         capability "Refresh"
@@ -29,7 +29,7 @@ metadata {
         attribute "htmlTile", "string"
         
         // Semantic State
-        attribute "powerLevel", "string" // High, Medium, Active, Idle, Offline
+        attribute "powerLevel", "string"
         
         // PARENT ATTRIBUTES
         attribute "locationPowerRealTimeKw", "number"
@@ -47,12 +47,12 @@ metadata {
         attribute "locationCostPerMonth", "number"
         attribute "locationCostPerPeriod", "number"
     }
-
+    
     preferences {
-        // --- DYNAMIC VARIABLES FOR TABLE (Parent Defaults: 1/3/6) ---
-        def tActive = settings?.tileThresholdActive != null ? settings.tileThresholdActive : 1.0
-        def tMed = settings?.tileThresholdMed != null ? settings.tileThresholdMed : 3.0
-        def tHigh = settings?.tileThresholdHigh != null ? settings.tileThresholdHigh : 6.0
+        // --- DYNAMIC VARIABLES FOR TABLE ---
+        def tActive = settings?.threshActive != null ? settings.threshActive : 1.0
+        def tMed = settings?.threshMed != null ? settings.threshMed : 3.0
+        def tHigh = settings?.threshHigh != null ? settings.threshHigh : 6.0
 
         // --- ANIVA STANDARD HEADER ---
         input name: "about", type: "paragraph", element: "paragraph", title: "", description: """
@@ -72,198 +72,239 @@ metadata {
             </div>
         </div>"""
 
-        input "username", "text", title: "WiMeter Username", required: true
-        input "password", "password", title: "WiMeter Password", required: true
-        input "pollInterval", "enum", title: "Poll Interval", options: ["1 min", "5 min", "15 min", "30 min", "1 hour"], defaultValue: "5 min", required: true
+        // --- API CONFIGURATION ---
+        input "apiBaseUrl", "text", title: "API Base URL", defaultValue: "https://wimeter.net/v1/pubmatrix?key=", required: true
+        input "apiKey", "text", title: "Public Key", description: "Found in WiMeter: Main Page -> Top Right -> Account -> Public Key", required: true
+        input "targetLocation", "text", title: "Target Location Name", required: true, description: "Matches the location attribute in API"
         
+        input "pollInterval", "enum", title: "Polling Interval", options: ["Manual", "1 Minute", "5 Minutes", "15 Minutes", "30 Minutes"], defaultValue: "5 Minutes"
+        input "debugMode", "bool", title: "Enable Debug Logging", defaultValue: false
+        
+        // --- DYNAMIC DASHBOARD TABLE ---
         input "headerTile", "paragraph", title: "", description: """
         <div style="background-color:#f0f0f0; padding: 10px; border-radius:5px; margin-top:10px;">
             <b style="color:#333;">Dashboard Tile Logic (Location)</b>
             <table style="width:100%; font-size:12px; margin-top:5px; border-collapse:collapse;">
                 <tr style="border-bottom:1px solid #ddd;"><th style="text-align:left;">State</th><th style="text-align:left;">Threshold</th><th style="text-align:left;">Color</th></tr>
-                <tr><td><b>High</b></td><td>> ${tHigh} kW</td><td><span style="color:white; background-color:#B71C1C; padding:2px 5px; border-radius:3px;">Red</span></td></tr>
-                <tr><td><b>Medium</b></td><td>> ${tMed} kW</td><td><span style="color:black; background-color:#FFD600; padding:2px 5px; border-radius:3px;">Yellow</span></td></tr>
-                <tr><td><b>Active</b></td><td>> ${tActive} kW</td><td><span style="color:white; background-color:#2E7D32; padding:2px 5px; border-radius:3px;">Green</span></td></tr>
-                <tr><td><b>Idle</b></td><td>< ${tActive} kW</td><td><span style="color:white; background-color:#424242; padding:2px 5px; border-radius:3px;">Grey</span></td></tr>
+                <tr><td><b>High</b></td><td>> ${tHigh} kW</td><td><span style="color:white; background-color:#c0392b; padding:2px 5px; border-radius:3px;">Red</span></td></tr>
+                <tr><td><b>Medium</b></td><td>> ${tMed} kW</td><td><span style="color:black; background-color:#f1c40f; padding:2px 5px; border-radius:3px;">Yellow</span></td></tr>
+                <tr><td><b>Active</b></td><td>> ${tActive} kW</td><td><span style="color:white; background-color:#27ae60; padding:2px 5px; border-radius:3px;">Green</span></td></tr>
+                <tr><td><b>Idle</b></td><td>< ${tActive} kW</td><td><span style="color:white; background-color:#7f8c8d; padding:2px 5px; border-radius:3px;">Grey</span></td></tr>
                 <tr><td><b>Offline</b></td><td>No Data</td><td><span style="color:white; background-color:#000000; padding:2px 5px; border-radius:3px;">Black</span></td></tr>
             </table>
         </div>
         """
         
-        input "tileThresholdActive", "decimal", title: "<span style='color:#2E7D32; font-weight:bold;'>Active Threshold (kW)</span>", description: "Default: 1.0", defaultValue: 1.0
-        input "tileThresholdMed", "decimal", title: "<span style='color:#F9A825; font-weight:bold;'>Medium Threshold (kW)</span>", description: "Default: 3.0", defaultValue: 3.0
-        input "tileThresholdHigh", "decimal", title: "<span style='color:#B71C1C; font-weight:bold;'>High Threshold (kW)</span>", description: "Default: 6.0", defaultValue: 6.0
-        
-        input "logEnable", "bool", title: "Enable Debug Logging", defaultValue: true
+        input "threshHigh", "decimal", title: "High Power [kW]", defaultValue: 6.0, required: true
+        input "threshMed", "decimal", title: "Medium Power [kW]", defaultValue: 3.0, required: true
+        input "threshActive", "decimal", title: "Active Power [kW]", defaultValue: 1.0, required: true
     }
 }
 
 def driverVersion() { return DRIVER_VERSION }
 
-def installed() {
-    log.info "Installing..."
-    initialize()
-}
+def installed() { initialize() }
 
-def updated() {
-    log.info "Updated..."
+def updated() { 
     initialize()
+    if(debugMode) runIn(1800, logsOff)
 }
 
 def initialize() {
     sendEvent(name: "_version", value: driverVersion())
     unschedule()
     
-    // Set Version on Children too
+    // Update Child Versions
     childDevices.each { child ->
-        child.updateVersion(driverVersion())
+        if (child.hasCommand("updateVersion")) child.updateVersion(driverVersion())
     }
 
-    if (pollInterval) {
-        def minutes = pollInterval.split(" ")[0].toInteger()
-        if (pollInterval.contains("hour")) minutes = 60
-        
-        if (minutes == 1) runEvery1Minute(refresh)
-        else if (minutes == 5) runEvery5Minutes(refresh)
-        else if (minutes == 15) runEvery15Minutes(refresh)
-        else if (minutes == 30) runEvery30Minutes(refresh)
-        else runEvery1Hour(refresh)
-    } else {
-        runEvery5Minutes(refresh)
+    switch(pollInterval) {
+        case "1 Minute": runEvery1Minute(refresh); break
+        case "5 Minutes": runEvery5Minutes(refresh); break
+        case "15 Minutes": runEvery15Minutes(refresh); break
+        case "30 Minutes": runEvery30Minutes(refresh); break
+        case "Manual": break;
+        default: runEvery5Minutes(refresh); break
     }
 }
 
+def resetAllData() {
+    log.warn "Resetting all data..."
+}
+
+def recreateChildDevices() {
+    log.warn "Wiping and recreating child devices..."
+    getChildDevices().each { deleteChildDevice(it.deviceNetworkId) }
+    refresh()
+}
+
 def refresh() {
-    if (logEnable) log.debug "Polling WiMeter API..."
+    if (debugMode) log.debug "Refreshing v${driverVersion()}..."
+
+    // Check Inputs
+    if (!apiBaseUrl || !apiKey || !targetLocation) {
+        logError "Missing API Configuration (Base URL, Key, or Location)."
+        handleOffline("Missing Config")
+        return
+    }
     
-    def params = [
-        uri: "https://wimeter.net/api/v1/get_data", 
-        body: [
-            username: username,
-            password: password
-        ],
-        requestContentType: "application/json",
-        contentType: "application/json",
-        timeout: 20 // 20s timeout
-    ]
+    // Build URL
+    def fullUrl = "${apiBaseUrl}${apiKey}"
+    def params = [uri: fullUrl, contentType: 'application/json', timeout: 10]
 
     try {
-        httpPost(params) { response ->
-            if (response.status == 200) {
-                if (response.data.ret == 1) {
+        httpGet(params) { resp ->
+            if (resp.status == 200) {
+                // CASE 1: Valid JSON response
+                if (resp.data) {
+                    // Check for WiMeter specific error: {"ret":0, "msg":""}
+                    if (resp.data instanceof Map && resp.data.containsKey("ret") && resp.data.ret == 0) {
+                        logError "API returned 'ret:0'. Key may be invalid."
+                        handleOffline("Invalid API Key")
+                        return
+                    }
+                    
+                    // Success Path
                     sendEvent(name: "apiStatus", value: "Online")
-                    sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss", location.timeZone))
-                    parseData(response.data.devices)
+                    sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
+                    processData(resp.data)
+                    
                 } else {
-                    log.error "API Error: ${response.data.msg}"
-                    handleOffline("API Error: " + response.data.msg)
+                    // CASE 2: Empty Data
+                    logError "API returned empty data."
+                    handleOffline("Empty Response")
                 }
             } else {
-                log.error "HTTP Error: ${response.status}"
-                handleOffline("HTTP Error: " + response.status)
+                // CASE 3: HTTP Error (Non-200)
+                logError "API HTTP Error: ${resp.status}"
+                handleOffline("HTTP Error: ${resp.status}")
             }
         }
-    } catch (e) {
-        log.error "Connection Failed: ${e}"
-        handleOffline("Connection Failed")
+    } catch (groovyx.net.http.HttpResponseException e) {
+        // CASE 4: 404/500 Errors often caught here
+        logError "HTTP Response Exception: ${e.statusCode} - ${e.message}"
+        handleOffline("HTTP Error: ${e.statusCode}")
+    } catch (Exception e) {
+        // CASE 5: Malformed JSON / "Not a valid page" text response
+        // When parsing fails (e.g. HTML returned instead of JSON), it falls here
+        logError "Connection/Parsing Failed: ${e.message}"
+        handleOffline("Invalid Response (Check Key)")
     }
 }
 
 // FORCE OFFLINE STATE
 def handleOffline(String reason) {
+    if (debugMode) log.warn "Setting device OFFLINE. Reason: ${reason}"
+    
     sendEvent(name: "apiStatus", value: "Offline")
     sendEvent(name: "powerLevel", value: "Offline")
     sendEvent(name: "power", value: 0) // Force 0W
     
-    // Update Tile to Black with "OFFLINE" text
-    updateHtmlTile(0, 0, true) 
+    // Update Tile to Black
+    updateHtmlTile(0, 0, true)
     
     // Propagate to Children
     childDevices.each { child ->
-        child.setOffline()
+        if (child.hasCommand("setOffline")) child.setOffline()
     }
 }
 
-def parseData(devices) {
-    def mergedDevices = [:]
-    
-    devices.each { item ->
-        def name = item.name
-        if (!mergedDevices[name]) mergedDevices[name] = []
-        mergedDevices[name] << item
-    }
-
-    mergedDevices.each { name, items ->
-        def isParent = false
-        if (items[0].location == name) isParent = true
-        
-        if (isParent) {
-             updateParent(name, items)
+def processData(data) {
+    def listToProcess = []
+    if (data instanceof List) {
+        listToProcess = data
+    } else if (data instanceof Map) {
+        if (data.containsKey("devices") && data.devices instanceof List) {
+             listToProcess = data.devices
+        } else if (data.containsKey("name")) {
+             listToProcess = [data]
         } else {
-             updateChild(name, items)
+             listToProcess = data.values()
+        }
+    }
+
+    def locationDevices = listToProcess.findAll { it.location && it.location.trim() == targetLocation.trim() }
+    def groupedDevices = locationDevices.groupBy { it.name }
+
+    groupedDevices.each { name, items ->
+        def cleanItems = items.collect { new HashMap(it) }
+
+        if (name.trim() == targetLocation.trim()) {
+            updateParentState(cleanItems)
+        } else {
+            updateChildDevice(name, cleanItems)
         }
     }
 }
 
-def updateParent(name, items) {
-    if (device.currentValue("location") != name) {
-        sendEvent(name: "location", value: name)
-        device.setName(name)
+def updateParentState(items) {
+    sendEvent(name: "location", value: targetLocation)
+    
+    def firstItem = items.find { it.url }
+    if (firstItem) {
+        sendEvent(name: "icon", value: firstItem.url)
+        sendEvent(name: "htmlIcon", value: "<img src='${firstItem.url}' style='height:40px;'>")
     }
 
-    def iconItem = items.find { it.url }
-    if (iconItem) {
-        def cleanUrl = iconItem.url.replace("\\/", "/")
-        if (device.currentValue("icon") != cleanUrl) {
-            sendEvent(name: "icon", value: cleanUrl)
-            String html = "<img src='${cleanUrl}' style='width:50px; height:50px;'>"
-            sendEvent(name: "htmlIcon", value: html)
-        }
-    }
-
-    def powerW = 0
     items.each { item ->
-        def results = processItem(item)
+        def results = calculateValueAndSuffix(item) 
         results.each { res ->
-            def attrName = "location" + res.baseType.capitalize() + res.suffix
-            if (res.unitSuffix) attrName += res.unitSuffix
-            
-            if (attrName == "locationPowerRealTimeW") {
-                sendEvent(name: "power", value: res.value, unit: "W")
-                powerW = res.value
+            if (res.baseType) {
+                def attrName = "location${res.baseType.capitalize()}${res.suffix}${res.unitSuffix}"
+                sendEvent(name: attrName, value: res.value, unit: res.unit)
+                if (attrName == "locationPowerRealTimeKw") {
+                     sendEvent(name: "power", value: res.value, unit: "kW")
+                }
             }
-            
-            sendEvent(name: attrName, value: res.value, unit: res.unit)
         }
     }
-    
-    updateHtmlTile(powerW, 0, false)
+
+    // Determine Power for Tile
+    def powerVal = 0.0
+    try {
+        def powerItem = items.find { it.unit == "kW" || it.unit == "W" }
+        if (powerItem && powerItem.reading != null) {
+            def rawVal = powerItem.reading.toBigDecimal()
+            if (powerItem.unit == "W") {
+                powerVal = (rawVal / 1000).toFloat().round(2)
+            } else {
+                powerVal = rawVal.toFloat().round(2)
+            }
+        }
+    } catch (e) {
+        powerVal = 0.0
+    }
+
+    // Use Helper
+    updateHtmlTile(powerVal, 0, false)
 }
 
-def updateChild(name, items) {
-    def dni = "wimeter-" + name.replaceAll("\\s", "").toLowerCase()
-    def child = childDevices.find { it.deviceNetworkId == dni }
+def updateChildDevice(name, items) {
+    def cleanName = name.replaceAll("'s", "").replaceAll("'S", "").replaceAll("/", "").trim()
+    def dni = "WIMETER_CHILD_${cleanName.replaceAll("[^a-zA-Z0-9]", "")}"
     
+    def child = getChildDevice(dni)
     if (!child) {
-        if (logEnable) log.info "Creating Child Device: ${name}"
         try {
-            child = addChildDevice("aniva", "WiMeter Child Device", dni, [name: name, isComponent: false])
-            child.label = name 
+            addChildDevice("aniva", "WiMeter Child Device", dni, [name: name, isComponent: true])
+            child = getChildDevice(dni)
             child.updateVersion(driverVersion())
         } catch (e) {
-            log.error "Failed to create child: ${e}"
+            logError "Failed to create child '${name}'. Error: ${e}"
             return
         }
     }
     child.parseItems(items)
 }
 
-def processItem(item) {
+def calculateValueAndSuffix(item) {
     def rawVal = item.reading.toFloat()
     def rawUnit = item.unit ? item.unit.trim() : ""
     def interval = (item.interval != null) ? item.interval.toInteger() : 0
     
     def results = []
+
     def getSuffix = { i ->
         if (i == 0) return "RealTime"
         else if (i == 86400) return "PerDay"
@@ -281,35 +322,35 @@ def processItem(item) {
         if (interval == 0) {
             def val_kW = (rawUnit == "W" || rawUnit == "Wh") ? (rawVal / 1000).round(3) : rawVal.round(3)
             def val_W = (rawUnit == "kW" || rawUnit == "kWh") ? (rawVal * 1000).round(1) : rawVal.round(1)
+
             results << [value: val_kW, unit: "kW", baseType: "power", suffix: suffix, unitSuffix: "Kw"]
             results << [value: val_W, unit: "W", baseType: "power", suffix: suffix, unitSuffix: "W"]
         } else {
-            results << [value: rawVal.round(2), unit: "kWh", baseType: "power", suffix: suffix, unitSuffix: "Kwh"]
+            def val_kWh = (rawUnit == "W" || rawUnit == "Wh") ? (rawVal / 1000).round(3) : rawVal.round(3)
+            results << [value: val_kWh, unit: "kWh", baseType: "power", suffix: suffix, unitSuffix: "Kwh"]
         }
     }
     return results
 }
 
-// --- HTML TILE GENERATION (Restored User's CSS) ---
-void updateHtmlTile(powerValW, costVal, boolean isOffline) {
-    def powerVal = (powerValW / 1000).round(2) 
-    
-    // FETCH SETTINGS AGAIN for live logic (safeguard)
-    def tActive = (tileThresholdActive != null) ? tileThresholdActive : 1.0
-    def tMed = (tileThresholdMed != null) ? tileThresholdMed : 3.0
-    def tHigh = (tileThresholdHigh != null) ? tileThresholdHigh : 6.0
-    
-    String cRed = "#B71C1C"
-    String cYellow = "#FFD600"
-    String cGreen = "#2E7D32"
-    String cGrey = "#424242"
+// --- HTML TILE GENERATION (Shared Helper) ---
+void updateHtmlTile(powerValKw, costVal, boolean isOffline) {
+    // Read Settings (using Original Variable Names)
+    def tHigh = settings?.threshHigh != null ? settings.threshHigh.toBigDecimal() : 6.0
+    def tMed = settings?.threshMed != null ? settings.threshMed.toBigDecimal() : 3.0
+    def tActive = settings?.threshActive != null ? settings.threshActive.toBigDecimal() : 1.0
+
+    String cRed = "#c0392b"
+    String cYellow = "#f1c40f"
+    String cGreen = "#27ae60"
+    String cGrey = "#7f8c8d"
     String cBlack = "#000000"
     
     def cardColor = cGrey
     def levelText = "Idle"
     
     String topLabel = "Power"
-    String mainValue = "${powerVal}"
+    String mainValue = "${powerValKw}"
     String unitSuffix = "kW"
 
     if (isOffline) {
@@ -319,13 +360,13 @@ void updateHtmlTile(powerValW, costVal, boolean isOffline) {
         mainValue = "OFFLINE"
         unitSuffix = ""
     } else {
-        if (powerVal >= tHigh) {
+        if (powerValKw >= tHigh) {
             cardColor = cRed
             levelText = "High"
-        } else if (powerVal >= tMed) {
+        } else if (powerValKw >= tMed) {
             cardColor = cYellow
             levelText = "Medium"
-        } else if (powerVal >= tActive) {
+        } else if (powerValKw >= tActive) {
             cardColor = cGreen
             levelText = "Active"
         }
@@ -357,3 +398,6 @@ void updateHtmlTile(powerValW, costVal, boolean isOffline) {
     
     sendEvent(name: "htmlTile", value: html)
 }
+
+def logsOff() { device.updateSetting("debugMode", [value:"false", type:"bool"]) }
+def logError(msg) { log.error msg }
