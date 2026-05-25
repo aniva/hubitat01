@@ -6,12 +6,12 @@
  * Includes battery correction (/2) and logic reversal.
  *
  * Author: Aniva
- * Version: 2.2.0
+ * Version: 2.2.1
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "2.2.0"
+@Field static final String DRIVER_VERSION = "2.2.1"
 
 metadata {
     // Renamed as requested to reflect physical hardware
@@ -127,6 +127,11 @@ void refresh() {
 
 void configure() {
     refresh()
+    try {
+        parent?.componentConfigure(this.device)
+    } catch (e) {
+        log.warn "Failed to request parent subscription update: ${e}"
+    }
 }
 
 // --- HELPERS ---

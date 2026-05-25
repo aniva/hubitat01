@@ -8,12 +8,12 @@
  * - Handles Ikea's specific Integer/Hex clusters
  *
  * Author: Aniva
- * Version: 1.1.0
+ * Version: 1.2.0
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "1.1.0"
+@Field static final String DRIVER_VERSION = "1.2.0"
 
 metadata {
     definition (name: "IKEA DIRIGERA Bridge", namespace: "aniva", author: "Aniva") {
@@ -60,11 +60,54 @@ void initialize() {
     
     // Auto-disable debug logging after 30 minutes
     if (logEnable) runIn(1800, logsOff)
+    
+    // Schedule subscription setup after 10 seconds to allow Matter connection to stabilize on boot
+    runIn(10, "updateSubscription")
 }
 
 void configure() {
     log.warn "ANIVA BRIDGE: Configure called"
-    refresh()
+    updateSubscription()
+}
+
+void componentConfigure(def childDevice) {
+    if (txtEnable) log.info "Configure requested by child: ${childDevice.displayName}"
+    // Debounce the subscription update to prevent multiple rapid commands
+    runIn(2, "updateSubscription")
+}
+
+void updateSubscription() {
+    logInfo("Updating subscriptions for child devices...")
+    List<Map<String,String>> paths = []
+    
+    getChildDevices().each { child ->
+        try {
+            String dni = child.deviceNetworkId
+            if (dni && dni.contains("-")) {
+                String epHex = dni.split("-").last()
+                int ep = Integer.parseInt(epHex, 16)
+                
+                if (child.hasCapability("ContactSensor")) {
+                    if (logEnable) log.debug "Adding Contact Sensor path for endpoint ${epHex} (decimal ${ep})"
+                    paths.add(matter.attributePath(ep, 0x0045, 0x0000))
+                }
+                if (child.hasCapability("Battery")) {
+                    if (logEnable) log.debug "Adding Battery path for endpoint ${epHex} (decimal ${ep})"
+                    paths.add(matter.attributePath(ep, 0x002F, 0x000C))
+                }
+            }
+        } catch (e) {
+            log.error "Error parsing child endpoint for subscription: ${e}"
+        }
+    }
+    
+    if (paths.size() > 0) {
+        String cmd = matter.cleanSubscribe(5, 3600, paths)
+        if (logEnable) log.debug "Sending Matter Subscribe CMD: ${cmd}"
+        sendHubCommand(new hubitat.device.HubAction(cmd, hubitat.device.Protocol.MATTER))
+    } else {
+        logInfo("No child device paths found for subscription.")
+    }
 }
 
 // --- DISPATCHER ---

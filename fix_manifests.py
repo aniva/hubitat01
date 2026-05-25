@@ -27,13 +27,13 @@ manifests = {
     "IkeaTimmerflotte/packageManifest.json": {
         "packageName": "IKEA TIMMERFLOTTE Matter Sensor",
         "author": "Aniva",
-        "version": "1.0.11",
+        "version": "1.0.13",
         "minimumHEVersion": "2.3.6",
         "dateReleased": "2026-01-02",
         "documentationLink": "https://github.com/aniva/hubitat01/blob/master/IkeaTimmerflotte/README.md",
         "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
         "payPalUrl": "https://paypal.me/AndreiIvanov420",
-        "releaseNotes": "v1.0.11 - Updated Release of dedicated Matter driver for IKEA TIMMERFLOTTE Temp & Humidity sensor.",
+        "releaseNotes": "v1.0.12 - Updated Release of dedicated Matter driver for IKEA TIMMERFLOTTE Temp & Humidity sensor. Further improved reporting logic.",
         "drivers": [
             {
                 "id": "c62f84b6-71d3-4a12-9c12-321345678912",
@@ -47,13 +47,13 @@ manifests = {
     "WimeterDriver/packageManifest.json": {
         "packageName": "WiMeter Cloud Bridge",
         "author": "Aniva",
-        "version": "4.15",
+        "version": "4.22",
         "minimumHEVersion": "2.3.0",
         "dateReleased": "2026-01-01",
         "documentationLink": "https://github.com/aniva/hubitat01/blob/master/WimeterDriver/README.md",
         "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
         "payPalUrl": "https://paypal.me/AndreiIvanov420",
-        "releaseNotes": "Major v4.15 Cumulative Update. \n\n1. ATTRIBUTE REFACTOR: Standardized all state variables to CamelCase. \n2. DASHBOARD TILE: Added configurable 'Live Status' HTML tile. \n3. AUTOMATION: Added 'powerLevel' attribute.",
+        "releaseNotes": "v4.22 - Added \"Offline\" state (Black Tile) & Aniva Header and other UX improvements.",
         "drivers": [
             {
                 "id": "92d05738-9572-4d04-9549-044738734960",
@@ -95,13 +95,13 @@ manifests = {
     "IkeaParasoll/packageManifest.json": {
         "packageName": "IKEA PARASOLL Matter Zigbee Sensor",
         "author": "Aniva",
-        "version": "2.2.0",
+        "version": "2.2.1",
         "minimumHEVersion": "2.3.0",
-        "dateReleased": "2026-01-09",
+        "dateReleased": "2026-05-25",
         "documentationLink": "https://github.com/aniva/hubitat01/blob/master/IkeaParasoll/README.md",
         "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
         "payPalUrl": "https://paypal.me/AndreiIvanov420",
-        "releaseNotes": "Initial Release: Dedicated Matter driver for IKEA PARASOLL Door/Window sensor.",
+        "releaseNotes": "v2.2.1 - Request parent bridge subscription update during configure.",
         "drivers": [
             {
                 "id": "55d97475-1833-5527-0162-8901366f8257",
@@ -135,13 +135,13 @@ manifests = {
     "DirigeraBridge/packageManifest.json": {
         "packageName": "IKEA DIRIGERA Bridge",
         "author": "Aniva",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "minimumHEVersion": "2.3.0",
-        "dateReleased": "2026-01-10",
+        "dateReleased": "2026-05-25",
         "documentationLink": "https://github.com/aniva/hubitat01/blob/master/DirigeraBridge/README.md",
         "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
         "payPalUrl": "https://paypal.me/AndreiIvanov420",
-        "releaseNotes": "Initial Release: Custom Matter Bridge driver for IKEA DIRIGERA Hub.",
+        "releaseNotes": "v1.2.0 - Implemented real-time Matter attribute subscriptions for child devices. Ensures instant and reliable Open/Close status updates.",
         "drivers": [
             {
                 "id": "9102845d-523c-48b8-8259-165839201234",
