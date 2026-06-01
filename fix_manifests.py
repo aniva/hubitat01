@@ -115,13 +115,13 @@ manifests = {
     "VirtualBattery/packageManifest.json": {
         "packageName": "Virtual Smart Battery (Mutable)",
         "author": "Aniva",
-        "version": "2.1.6",
+        "version": "2.1.7",
         "minimumHEVersion": "2.2.0",
-        "dateReleased": "2026-01-05",
+        "dateReleased": "2026-06-01",
         "documentationLink": "https://github.com/aniva/hubitat01/blob/master/VirtualBattery/README.md",
         "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
         "payPalUrl": "https://paypal.me/AndreiIvanov420",
-        "releaseNotes": "v2.1.6: Major Overhaul! Transformed into a 'Smart Simulator' with gradual battery drain, 'Time Machine' date selection for past installs, and adaptive learning that adjusts to your real battery usage. Includes new 'setSourceStatus' command for Rule Machine and fixed UI rendering.",
+        "releaseNotes": "v2.1.7 - Fixed bug where hub reboots or preference updates would override the 'Low' battery state back to 'Discharging' before the battery was replaced.",
         "drivers": [
             {
                 "id": "94c86364-0722-4416-9051-7890255e7146",

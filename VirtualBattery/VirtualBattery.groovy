@@ -10,12 +10,12 @@
  * - Aniva Standard UI (Fixed CSS Background).
  *
  * Author: Aniva
- * Version: 2.1.6
+ * Version: 2.1.7
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "2.1.6"
+@Field static final String DRIVER_VERSION = "2.1.7"
 
 metadata {
     definition (name: "Virtual Smart Battery", namespace: "aniva", author: "Aniva") {
@@ -149,6 +149,10 @@ void updated() {
 
 void refresh() {
     state.driverVersion = driverVersion()
+    if (device.currentValue("cycleState") == "Low") {
+        logDebug("Battery is in 'Low' state. Skipping time-based recalculation.")
+        return
+    }
     logDebug("Refresh called. Recalculating state based on installed date...")
     
     // 1. Determine Start Date
