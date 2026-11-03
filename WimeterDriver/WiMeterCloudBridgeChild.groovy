@@ -1,13 +1,15 @@
 /**
  * WiMeter Child Device
  *
+ * v4.30 - Standard EnergyMeter (kWh) support, optional cost subtitle, customizable tile styling
+ *         with legacy fallback, and resetData command.
  * v4.22 - UI Simplification: Switched to Static Color Legend.
  * v4.21 - UI Fixes: Dynamic Icon in Header.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.22"
+@Field static final String DRIVER_VERSION = "4.30"
 
 metadata {
     definition (name: "WiMeter Child Device", namespace: "aniva", author: "aniva") {
@@ -23,9 +25,10 @@ metadata {
         attribute "htmlTile", "string"
         attribute "powerLevel", "string" 
 
+        attribute "power", "number" 
+        attribute "energy", "number"
         attribute "powerRealTimeKw", "number"
         attribute "powerRealTimeW", "number"
-        attribute "power", "number" 
         
         attribute "powerPerDayKwh", "number"
         attribute "powerPerWeekKwh", "number"
@@ -39,6 +42,7 @@ metadata {
         attribute "costPerPeriod", "number"
         
         command "setOffline"
+        command "resetData"
         command "updateVersion", ["string"]
     }
     
@@ -83,6 +87,10 @@ metadata {
         input "threshActive", "decimal", title: "Active Threshold (kW)", defaultValue: 0.4
         input "threshMed", "decimal", title: "Medium Threshold (kW)", defaultValue: 1.0
         input "threshHigh", "decimal", title: "High Threshold (kW)", defaultValue: 2.0
+
+        // --- TILE APPEARANCE & LAYOUT (REVERSIBLE) ---
+        input "tileLayout", "enum", title: "Dashboard Tile Layout Style", options: ["legacy": "Custom Dashboard Layout (Current)", "centered": "Clean Box Layout"], defaultValue: "legacy", required: false
+        input "showCostOnTile", "bool", title: "Show Cost on Dashboard Tile (if available)", defaultValue: false
     }
 }
 
@@ -102,12 +110,22 @@ void refresh() {
 }
 
 void setOffline() {
-    sendEvent(name: "power", value: 0)
-    sendEvent(name: "powerRealTimeW", value: 0)
-    sendEvent(name: "powerRealTimeKw", value: 0)
+    sendEvent(name: "power", value: 0, unit: "W")
+    sendEvent(name: "powerRealTimeW", value: 0, unit: "W")
+    sendEvent(name: "powerRealTimeKw", value: 0, unit: "kW")
     sendEvent(name: "powerLevel", value: "Offline")
     
     updateHtmlTile(0, 0, true) 
+}
+
+void resetData() {
+    log.warn "Resetting data on ${device.displayName}..."
+    sendEvent(name: "power", value: 0, unit: "W")
+    sendEvent(name: "powerRealTimeW", value: 0, unit: "W")
+    sendEvent(name: "powerRealTimeKw", value: 0, unit: "kW")
+    sendEvent(name: "powerLevel", value: "Idle")
+    state.clear()
+    updateHtmlTile(0, 0, false)
 }
 
 void parseItems(items) {
@@ -128,16 +146,39 @@ void parseItems(items) {
             attrName += res.suffix
             if (res.unitSuffix) attrName += res.unitSuffix
             
+            // Hubitat PowerMeter standard: Watts (W)
             if (attrName == "powerRealTimeW") {
                 sendEvent(name: "power", value: res.value, unit: "W")
                 powerW = res.value
             }
+            
+            // Hubitat EnergyMeter standard: kWh
+            if (attrName == "powerPerDayKwh") {
+                sendEvent(name: "energy", value: res.value, unit: "kWh")
+            } else if (attrName == "powerPerWeekKwh" && device.currentValue("energy") == null) {
+                sendEvent(name: "energy", value: res.value, unit: "kWh")
+            }
+            
             sendEvent(name: attrName, value: res.value, unit: res.unit)
         }
     }
     
+    def costVal = 0.0
+    def costPeriod = "/wk"
+    try {
+        def costItem = items.find { (it.unit == "\$" || it.unit == '$') }
+        if (costItem && costItem.reading != null) {
+            costVal = costItem.reading.toBigDecimal().round(2)
+            if (costItem.interval == 86400) costPeriod = "/day"
+            else if (costItem.interval == 604800) costPeriod = "/wk"
+            else if (costItem.interval >= 2419200) costPeriod = "/mo"
+        }
+    } catch (e) {
+        costVal = 0.0
+    }
+
     def powerKw = (powerW / 1000).toFloat().round(2)
-    updateHtmlTile(powerKw, 0, false)
+    updateHtmlTile(powerKw, costVal, false, costPeriod)
 }
 
 def processItem(item) {
@@ -175,7 +216,7 @@ def processItem(item) {
     return results
 }
 
-void updateHtmlTile(powerValKw, costVal, boolean isOffline) {
+void updateHtmlTile(powerValKw, costVal, boolean isOffline, String costPeriod = "/wk") {
     def tActive = settings?.threshActive != null ? settings.threshActive.toBigDecimal() : 0.4
     def tMed = settings?.threshMed != null ? settings.threshMed.toBigDecimal() : 1.0
     def tHigh = settings?.threshHigh != null ? settings.threshHigh.toBigDecimal() : 2.0
@@ -214,26 +255,56 @@ void updateHtmlTile(powerValKw, costVal, boolean isOffline) {
     
     sendEvent(name: "powerLevel", value: levelText)
     
-    String html = """
-    <div style='
-        width: 95% !important; 
-        height: 85% !important;
-        margin-top: 5% !important;
-        margin-left: 0% !important;
-        margin-right: -40% !important;
-        margin-bottom: 15% !important;
-        background-color: ${cardColor}; 
-        color: white;
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        justify-content: center;
-        border-radius: 5px;
-    '>
-        <div style='font-size:0.8rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>${topLabel}</div>
-        <div style='font-size:1.5rem; font-weight:bold; line-height:1.1;'>${mainValue} <span style='font-size:0.6em'>${unitSuffix}</span></div>
-    </div>
-    """
+    boolean useCentered = (settings?.tileLayout == "centered")
+    boolean showCost = (settings?.showCostOnTile == true) && (costVal != null && costVal > 0)
+    String costHtml = showCost ? "<div style='font-size:0.65rem; opacity:0.85; margin-top:2px;'>\$${costVal}${costPeriod}</div>" : ""
+
+    String html = ""
+    if (useCentered) {
+        html = """
+        <div style='
+            box-sizing: border-box;
+            width: 100% !important; 
+            height: 100% !important;
+            padding: 6px;
+            background-color: ${cardColor}; 
+            color: white;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            border-radius: 6px;
+            text-align: center;
+        '>
+            <div style='font-size:0.75rem; text-transform:uppercase; opacity:0.9;'>${topLabel}</div>
+            <div style='font-size:1.4rem; font-weight:bold; line-height:1.1;'>${mainValue} <span style='font-size:0.6em'>${unitSuffix}</span></div>
+            ${costHtml}
+        </div>
+        """
+    } else {
+        // EXACT Legacy Tuned Margins (preserved for Dashboard compatibility)
+        html = """
+        <div style='
+            width: 95% !important; 
+            height: 85% !important;
+            margin-top: 5% !important;
+            margin-left: 0% !important;
+            margin-right: -40% !important;
+            margin-bottom: 15% !important;
+            background-color: ${cardColor}; 
+            color: white;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            border-radius: 5px;
+        '>
+            <div style='font-size:0.8rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>${topLabel}</div>
+            <div style='font-size:1.5rem; font-weight:bold; line-height:1.1;'>${mainValue} <span style='font-size:0.6em'>${unitSuffix}</span></div>
+            ${costHtml}
+        </div>
+        """
+    }
     
     sendEvent(name: "htmlTile", value: html)
 }

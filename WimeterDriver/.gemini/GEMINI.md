@@ -1,5 +1,5 @@
 # WiMeter Hubitat Driver - Development Context
-**Last Updated:** v4.15 (January 1, 2026)
+**Last Updated:** v4.30 (November 2, 2026)
 **Project:** WiMeter Cloud Bridge for Hubitat Elevation
 
 ## 1. Project Overview

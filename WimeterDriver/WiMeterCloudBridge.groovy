@@ -1,16 +1,19 @@
 /**
  * WiMeter Cloud Bridge (Parent)
  *
+ * v4.30 - Asynchronous HTTP polling (asynchttpGet), Hubitat PowerMeter (Watts) & EnergyMeter (kWh)
+ *         standard compliance, optional cost subtitle, customizable tile styling with legacy fallback,
+ *         and resetAllData implementation.
  * v4.22 - UI Simplification: Switched to Static Color Legend to avoid render sync issues.
  * v4.21 - UX Improvements: Table refresh optimization.
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "4.22"
+@Field static final String DRIVER_VERSION = "4.30"
 
 metadata {
-    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.22") {
+    definition (name: "WiMeter Cloud Bridge", namespace: "aniva", author: "aniva", importUrl: "https://raw.githubusercontent.com/aniva/hubitat01/master/WimeterDriver/WiMeterCloudBridge.groovy", version: "4.30") {
         capability "PowerMeter" 
         capability "EnergyMeter"
         capability "Refresh"
@@ -30,9 +33,10 @@ metadata {
         attribute "powerLevel", "string"
         
         // PARENT ATTRIBUTES
+        attribute "power", "number" 
+        attribute "energy", "number"
         attribute "locationPowerRealTimeKw", "number"
         attribute "locationPowerRealTimeW", "number"
-        attribute "power", "number" 
         attribute "locationPowerPerDayKwh", "number"
         attribute "locationPowerPerWeekKwh", "number"
         attribute "locationPowerPerMonthKwh", "number"
@@ -71,7 +75,7 @@ metadata {
         input "pollInterval", "enum", title: "Polling Interval", options: ["Manual", "1 Minute", "5 Minutes", "15 Minutes", "30 Minutes"], defaultValue: "5 Minutes", required: true
         input "debugMode", "bool", title: "Enable Debug Logging (Auto-off in 30 min)", defaultValue: false
         
-        // --- STATIC LEGEND (Simpler) ---
+        // --- STATIC LEGEND ---
         input "headerTile", "paragraph", title: "", description: """
         <div style="background-color:#f0f0f0; padding: 10px; border-radius:5px; margin-top:10px;">
             <b style="color:#333;">Dashboard Tile Legend</b>
@@ -87,9 +91,13 @@ metadata {
         </div>
         """
         
-        input "threshHigh", "decimal", title: "High Power Threshold [kW]", defaultValue: 6.0, required: true
-        input "threshMed", "decimal", title: "Medium Power Threshold [kW]", defaultValue: 3.0, required: true
         input "threshActive", "decimal", title: "Active Power Threshold [kW]", defaultValue: 1.0, required: true
+        input "threshMed", "decimal", title: "Medium Power Threshold [kW]", defaultValue: 3.0, required: true
+        input "threshHigh", "decimal", title: "High Power Threshold [kW]", defaultValue: 6.0, required: true
+
+        // --- TILE APPEARANCE & LAYOUT (REVERSIBLE) ---
+        input "tileLayout", "enum", title: "Dashboard Tile Layout Style", options: ["legacy": "Custom Dashboard Layout (Current)", "centered": "Clean Box Layout"], defaultValue: "legacy", required: false
+        input "showCostOnTile", "bool", title: "Show Daily Cost on Tile (if available)", defaultValue: false
     }
 }
 
@@ -123,10 +131,23 @@ def initialize() {
         case "Manual": break;
         default: runEvery5Minutes(refresh); break
     }
+    
+    runIn(2, refresh)
 }
 
 def resetAllData() {
-    log.warn "Resetting all data..."
+    log.warn "Resetting all data on ${device.displayName}..."
+    sendEvent(name: "power", value: 0, unit: "W")
+    sendEvent(name: "locationPowerRealTimeW", value: 0, unit: "W")
+    sendEvent(name: "locationPowerRealTimeKw", value: 0, unit: "kW")
+    sendEvent(name: "powerLevel", value: "Idle")
+    sendEvent(name: "apiStatus", value: "Offline")
+    state.clear()
+    updateHtmlTile(0, 0, false)
+    
+    childDevices.each { child ->
+        if (child.hasCommand("resetData")) child.resetData()
+    }
 }
 
 def recreateChildDevices() {
@@ -136,7 +157,7 @@ def recreateChildDevices() {
 }
 
 def refresh() {
-    if (debugMode) log.debug "Refreshing v${driverVersion()}..."
+    if (debugMode) log.debug "Refreshing v${driverVersion()} (async)..."
 
     if (!apiBaseUrl || !apiKey || !targetLocation) {
         logError "Missing API Configuration."
@@ -145,34 +166,49 @@ def refresh() {
     }
     
     def fullUrl = "${apiBaseUrl}${apiKey}"
-    def params = [uri: fullUrl, contentType: 'application/json', timeout: 10]
+    def params = [
+        uri: fullUrl,
+        contentType: 'application/json',
+        timeout: 10,
+        ignoreSSLIssues: true
+    ]
 
     try {
-        httpGet(params) { resp ->
-            if (resp.status == 200) {
-                if (resp.data) {
-                    if (resp.data instanceof Map && resp.data.containsKey("ret") && resp.data.ret == 0) {
-                        logError "API returned 'ret:0'. Key may be invalid."
-                        handleOffline("Invalid API Key")
-                        return
-                    }
-                    sendEvent(name: "apiStatus", value: "Online")
-                    sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
-                    processData(resp.data)
-                } else {
-                    logError "API returned empty data."
-                    handleOffline("Empty Response")
-                }
-            } else {
-                logError "API HTTP Error: ${resp.status}"
-                handleOffline("HTTP Error: ${resp.status}")
-            }
-        }
-    } catch (groovyx.net.http.HttpResponseException e) {
-        logError "HTTP Response Exception: ${e.statusCode} - ${e.message}"
-        handleOffline("HTTP Error: ${e.statusCode}")
+        asynchttpGet("httpCallback", params)
     } catch (Exception e) {
-        logError "Connection/Parsing Failed: ${e.message}"
+        logError "asynchttpGet Failed to schedule: ${e.message}"
+        handleOffline("Schedule Failed")
+    }
+}
+
+void httpCallback(response, data) {
+    if (debugMode) log.debug "Async HTTP callback received (status: ${response?.status})"
+    
+    if (!response || response.hasError()) {
+        def status = response?.status ?: "Unknown"
+        def errMsg = response?.errorMessage ?: "HTTP Request Error"
+        logError "API HTTP Error: ${status} - ${errMsg}"
+        handleOffline("HTTP Error: ${status}")
+        return
+    }
+
+    try {
+        if (response.data) {
+            def parsed = parseJson(response.data)
+            if (parsed instanceof Map && parsed.containsKey("ret") && parsed.ret == 0) {
+                logError "API returned 'ret:0'. Key may be invalid."
+                handleOffline("Invalid API Key")
+                return
+            }
+            sendEvent(name: "apiStatus", value: "Online")
+            sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
+            processData(parsed)
+        } else {
+            logError "API returned empty data."
+            handleOffline("Empty Response")
+        }
+    } catch (Exception e) {
+        logError "Parsing Response Failed: ${e.message}"
         handleOffline("Invalid Response/Data")
     }
 }
@@ -182,7 +218,7 @@ def handleOffline(String reason) {
     
     sendEvent(name: "apiStatus", value: "Offline")
     sendEvent(name: "powerLevel", value: "Offline")
-    sendEvent(name: "power", value: 0) 
+    sendEvent(name: "power", value: 0, unit: "W") 
     updateHtmlTile(0, 0, true)
     
     childDevices.each { child ->
@@ -233,8 +269,15 @@ def updateParentState(items) {
             if (res.baseType) {
                 def attrName = "location${res.baseType.capitalize()}${res.suffix}${res.unitSuffix}"
                 sendEvent(name: attrName, value: res.value, unit: res.unit)
-                if (attrName == "locationPowerRealTimeKw") {
-                     sendEvent(name: "power", value: res.value, unit: "kW")
+                
+                // Hubitat PowerMeter capability standard: Watts (W)
+                if (attrName == "locationPowerRealTimeW") {
+                     sendEvent(name: "power", value: res.value, unit: "W")
+                }
+                
+                // Hubitat EnergyMeter capability standard: kWh
+                if (attrName == "locationPowerPerDayKwh") {
+                     sendEvent(name: "energy", value: res.value, unit: "kWh")
                 }
             }
         }
@@ -255,7 +298,17 @@ def updateParentState(items) {
         powerVal = 0.0
     }
 
-    updateHtmlTile(powerVal, 0, false)
+    def costVal = 0.0
+    try {
+        def costItem = items.find { (it.unit == "\$" || it.unit == '$') && it.interval == 86400 }
+        if (costItem && costItem.reading != null) {
+            costVal = costItem.reading.toBigDecimal().round(2)
+        }
+    } catch (e) {
+        costVal = 0.0
+    }
+
+    updateHtmlTile(powerVal, costVal, false)
 }
 
 def updateChildDevice(name, items) {
@@ -352,26 +405,56 @@ void updateHtmlTile(powerValKw, costVal, boolean isOffline) {
     
     sendEvent(name: "powerLevel", value: levelText)
     
-    String html = """
-    <div style='
-        width: 95% !important; 
-        height: 85% !important;
-        margin-top: 5% !important;
-        margin-left: 0% !important;
-        margin-right: -40% !important;
-        margin-bottom: 15% !important;
-        background-color: ${cardColor}; 
-        color: white;
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        justify-content: center;
-        border-radius: 5px;
-    '>
-        <div style='font-size:0.8rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>${topLabel}</div>
-        <div style='font-size:1.5rem; font-weight:bold; line-height:1.1;'>${mainValue} <span style='font-size:0.6em'>${unitSuffix}</span></div>
-    </div>
-    """
+    boolean useCentered = (settings?.tileLayout == "centered")
+    boolean showCost = (settings?.showCostOnTile == true) && (costVal != null && costVal > 0)
+    String costHtml = showCost ? "<div style='font-size:0.65rem; opacity:0.85; margin-top:2px;'>\$${costVal}/day</div>" : ""
+
+    String html = ""
+    if (useCentered) {
+        html = """
+        <div style='
+            box-sizing: border-box;
+            width: 100% !important; 
+            height: 100% !important;
+            padding: 6px;
+            background-color: ${cardColor}; 
+            color: white;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            border-radius: 6px;
+            text-align: center;
+        '>
+            <div style='font-size:0.75rem; text-transform:uppercase; opacity:0.9;'>${topLabel}</div>
+            <div style='font-size:1.4rem; font-weight:bold; line-height:1.1;'>${mainValue} <span style='font-size:0.6em'>${unitSuffix}</span></div>
+            ${costHtml}
+        </div>
+        """
+    } else {
+        // EXACT Legacy Tuned Margins (preserved for Dashboard compatibility)
+        html = """
+        <div style='
+            width: 95% !important; 
+            height: 85% !important;
+            margin-top: 5% !important;
+            margin-left: 0% !important;
+            margin-right: -40% !important;
+            margin-bottom: 15% !important;
+            background-color: ${cardColor}; 
+            color: white;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            border-radius: 5px;
+        '>
+            <div style='font-size:0.8rem; text-transform:uppercase; opacity:0.9; margin-bottom:0px;'>${topLabel}</div>
+            <div style='font-size:1.5rem; font-weight:bold; line-height:1.1;'>${mainValue} <span style='font-size:0.6em'>${unitSuffix}</span></div>
+            ${costHtml}
+        </div>
+        """
+    }
     
     sendEvent(name: "htmlTile", value: html)
 }
