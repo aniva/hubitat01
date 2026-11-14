@@ -1,13 +1,13 @@
 {
   "packageName": "PC Sleep and Wake Controller",
   "author": "Aniva",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "minimumHEVersion": "2.2.0",
   "dateReleased": "2026-11-14",
   "documentationLink": "https://github.com/aniva/hubitat01/blob/master/PCSleepController/README.md",
   "licenseFile": "https://raw.githubusercontent.com/aniva/hubitat01/master/LICENSE",
   "payPalUrl": "https://paypal.me/AndreiIvanov420",
-  "releaseNotes": "v1.0.1 - Added strict idempotency checks on switch and target calls, manual-only safety directives to prevent voice assistant misfires, and tray icon documentation.",
+  "releaseNotes": "v1.0.2 - Updated PiKVM v2 ATX endpoint to target /api/atx/click?button=power for verified cold-boot fallback from S5.",
   "drivers": [
     {
       "id": "74edf05d-a14e-4a4f-9836-997d351c8a7b",

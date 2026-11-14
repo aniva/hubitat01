@@ -16,12 +16,12 @@
  * - Optional PiKVM v2 ATX pulse fallback.
  *
  * Author: Aniva
- * Version: 1.0.1
+ * Version: 1.0.2
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "1.0.1"
+@Field static final String DRIVER_VERSION = "1.0.2"
 
 metadata {
     definition(name: "PC Sleep and Wake Controller", namespace: "aniva", author: "Aniva") {
@@ -432,9 +432,8 @@ def pulsePikvmAtx() {
     }
     
     Map params = [
-        uri: "https://${pikvmIp}/api/atx/power",
+        uri: "https://${pikvmIp}/api/atx/click?button=power",
         headers: headers,
-        body: ["action": "pulse"],
         ignoreSSLIssues: true,
         timeout: 10
     ]
