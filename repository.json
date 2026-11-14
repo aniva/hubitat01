@@ -83,6 +83,19 @@
       ],
       "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/DirigeraBridge/packageManifest.json",
       "description": "Custom Matter Bridge driver for IKEA DIRIGERA Hub to access Zigbee devices added to the Hub."
+    },
+    {
+      "name": "PC Sleep and Wake Controller",
+      "category": "Utilities",
+      "tags": [
+        "Sleep",
+        "Wake-on-LAN",
+        "PC Control",
+        "WoL",
+        "Automation"
+      ],
+      "location": "https://raw.githubusercontent.com/aniva/hubitat01/master/PCSleepController/packageManifest.json",
+      "description": "Multi-target PC deep sleep and Wake-on-LAN controller with safety interlock reporting for bedroom/office acoustic automation."
     }
   ]
 }

@@ -2,3 +2,9 @@
 **/*.bak.*
 *Zone.Identifier
 *.zip
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.local.env
