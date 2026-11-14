@@ -7,6 +7,8 @@
  *
  * Features:
  * - Direct Switch capability ("Silent Night" / "Sleep Lab" mode).
+ * - Strict Idempotency: Duplicate ON/OFF or sleep/wake calls are safely ignored without re-triggering.
+ * - Manual-Only Safety: Designed for Dashboard & manual UI control; excluded from voice integrations.
  * - Individual and group sleep/wake controls (ai-box, tv-box).
  * - Pre-flight safety interlock reporting (e.g. 3D printer running, SSH active).
  * - Async HTTP calls (non-blocking for Hubitat thread safety).
@@ -14,12 +16,12 @@
  * - Optional PiKVM v2 ATX pulse fallback.
  *
  * Author: Aniva
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 
 import groovy.transform.Field
 
-@Field static final String DRIVER_VERSION = "1.0.0"
+@Field static final String DRIVER_VERSION = "1.0.1"
 
 metadata {
     definition(name: "PC Sleep and Wake Controller", namespace: "aniva", author: "Aniva") {
@@ -65,6 +67,18 @@ metadata {
                     <a href='https://github.com/aniva/hubitat01/tree/master/PCSleepController' target='_blank' style='color: #0275d8; text-decoration: none;'>View on GitHub</a><br>
                     <a href='https://paypal.me/AndreiIvanov420' target='_blank' style='color: #0275d8; text-decoration: none;'>Support Dev</a>
                 </div>
+            </div>"""
+        )
+
+        input(
+            name: "voiceWarning",
+            type: "paragraph",
+            element: "paragraph",
+            title: "SAFETY DIRECTIVE: MANUAL & DASHBOARD USE ONLY",
+            description: """
+            <div style='padding: 8px 12px; border-left: 4px solid #ef4444; background: #fef2f2; border-radius: 4px; font-size: 0.85em; color: #991b1b;'>
+                <strong>CRITICAL SAFETY:</strong> Do NOT share or select this device in voice assistant integrations (Amazon Echo / Google Home / Siri).
+                This switch is strictly intended for intentional manual dashboard or physical button triggers.
             </div>"""
         )
 
@@ -157,9 +171,15 @@ def setupSchedule() {
     }
 }
 
-// --- Standard Switch Capabilities ---
+// --- Standard Switch Capabilities (Strictly Idempotent) ---
 
 def on() {
+    String current = device.currentValue("switch")
+    if (current == "on") {
+        logInfo "Switch is ALREADY ON (idempotent no-op). Ignoring command."
+        return
+    }
+
     if (switchBehavior == "wakeOn") {
         wakeBoth()
     } else {
@@ -168,6 +188,12 @@ def on() {
 }
 
 def off() {
+    String current = device.currentValue("switch")
+    if (current == "off") {
+        logInfo "Switch is ALREADY OFF (idempotent no-op). Ignoring command."
+        return
+    }
+
     if (switchBehavior == "wakeOn") {
         sleepBoth()
     } else {
@@ -175,20 +201,72 @@ def off() {
     }
 }
 
-// --- High-Level Sleep / Wake Operations ---
+// --- High-Level Sleep / Wake Operations (Idempotent per Target) ---
 
 def sleepBoth() {
-    logInfo "Executing Sleep Both command..."
+    String aiStatus = device.currentValue("aiBoxPresence")
+    String tvStatus = device.currentValue("tvBoxPresence")
+
+    boolean aiAlreadyAsleep = (!aiBoxEnabled || aiStatus in ["shutdown", "sleeping"])
+    boolean tvAlreadyAsleep = (!tvBoxEnabled || tvStatus in ["sleeping"])
+
+    if (aiAlreadyAsleep && tvAlreadyAsleep) {
+        logInfo "All enabled targets are already asleep/shutdown (idempotent no-op)."
+        updateSwitchEvent("sleep")
+        return
+    }
+
+    logInfo "Executing Sleep command..."
     updateSwitchEvent("sleep")
-    if (aiBoxEnabled) sleepAiBox()
-    if (tvBoxEnabled) sleepTvBox()
+
+    if (aiBoxEnabled) {
+        if (!aiAlreadyAsleep) {
+            sleepAiBox()
+        } else {
+            logDebug "ai-box is already in state '${aiStatus}'; skipping redundant sleep command."
+        }
+    }
+
+    if (tvBoxEnabled) {
+        if (!tvAlreadyAsleep) {
+            sleepTvBox()
+        } else {
+            logDebug "tv-box is already sleeping; skipping redundant sleep command."
+        }
+    }
 }
 
 def wakeBoth() {
-    logInfo "Executing Wake Both command..."
+    String aiStatus = device.currentValue("aiBoxPresence")
+    String tvStatus = device.currentValue("tvBoxPresence")
+
+    boolean aiAlreadyAwake = (!aiBoxEnabled || aiStatus == "online")
+    boolean tvAlreadyAwake = (!tvBoxEnabled || tvStatus == "online")
+
+    if (aiAlreadyAwake && tvAlreadyAwake) {
+        logInfo "All enabled targets are already online (idempotent no-op)."
+        updateSwitchEvent("wake")
+        return
+    }
+
+    logInfo "Executing Wake command..."
     updateSwitchEvent("wake")
-    if (aiBoxEnabled) wakeAiBox()
-    if (tvBoxEnabled) wakeTvBox()
+
+    if (aiBoxEnabled) {
+        if (!aiAlreadyAwake) {
+            wakeAiBox()
+        } else {
+            logDebug "ai-box is already online; skipping redundant wake command."
+        }
+    }
+
+    if (tvBoxEnabled) {
+        if (!tvAlreadyAwake) {
+            wakeTvBox()
+        } else {
+            logDebug "tv-box is already online; skipping redundant wake command."
+        }
+    }
 }
 
 private void updateSwitchEvent(String action) {
@@ -200,14 +278,14 @@ private void updateSwitchEvent(String action) {
     sendEvent(name: "lastAction", value: "${action.capitalize()} triggered at ${new Date().format('yyyy-MM-dd HH:mm:ss')}")
 }
 
-// --- Target 1: ai-box ---
+// --- Target 1: Linux Server (e.g. ai-box) ---
 
 def sleepAiBox() {
     if (!aiBoxIp) {
-        logWarn "ai-box IP is not configured."
+        logWarn "Target 1 IP is not configured."
         return
     }
-    logInfo "Requesting graceful sleep/shutdown for ai-box (${aiBoxIp}:${aiBoxPort})..."
+    logInfo "Requesting graceful sleep/shutdown for Target 1 (${aiBoxIp}:${aiBoxPort})..."
     
     Map params = [
         uri: "http://${aiBoxIp}:${aiBoxPort}/sleep",
@@ -229,30 +307,30 @@ def sleepAiBox() {
 def handleAiBoxSleepResponse(response, data) {
     int status = response.status
     if (status == 200) {
-        logInfo "ai-box accepted sleep request. Shutting down..."
-        sendEvent(name: "aiBoxPresence", value: "shutdown", descriptionText: "ai-box shutting down gracefully")
+        logInfo "Target 1 accepted sleep request. Shutting down..."
+        sendEvent(name: "aiBoxPresence", value: "shutdown", descriptionText: "Target 1 shutting down gracefully")
         sendEvent(name: "safetyStatus", value: "Clear")
     } else if (status == 409) {
         String msg = response.errorData ?: response.data ?: "Interlock active"
-        logWarn "ai-box REFUSED sleep command: Safety interlock tripped! (${msg})"
-        sendEvent(name: "safetyStatus", value: "ai-box Interlock: ${msg}")
+        logWarn "Target 1 REFUSED sleep command: Safety interlock tripped! (${msg})"
+        sendEvent(name: "safetyStatus", value: "Target 1 Interlock: ${msg}")
         sendEvent(name: "aiBoxPresence", value: "interlock_tripped")
     } else if (status == 401 || status == 403) {
-        logWarn "ai-box sleep rejected: Authentication failed (Status ${status}). Check shared secret token."
-        sendEvent(name: "safetyStatus", value: "ai-box Auth Error (${status})")
+        logWarn "Target 1 sleep rejected: Authentication failed (Status ${status}). Check shared secret token."
+        sendEvent(name: "safetyStatus", value: "Target 1 Auth Error (${status})")
     } else {
-        logWarn "ai-box sleep request returned HTTP ${status}: ${response.errorMessage ?: 'Unknown error'}"
+        logWarn "Target 1 sleep request returned HTTP ${status}: ${response.errorMessage ?: 'Unknown error'}"
     }
 }
 
 def wakeAiBox() {
     if (!aiBoxMac) {
-        logWarn "ai-box MAC address is not configured."
+        logWarn "Target 1 MAC address is not configured."
         return
     }
-    logInfo "Sending Wake-on-LAN Magic Packet to ai-box (${aiBoxMac})..."
+    logInfo "Sending Wake-on-LAN Magic Packet to Target 1 (${aiBoxMac})..."
     sendWoL(aiBoxMac)
-    sendEvent(name: "aiBoxPresence", value: "waking", descriptionText: "Sent WoL Magic Packet to ai-box")
+    sendEvent(name: "aiBoxPresence", value: "waking", descriptionText: "Sent WoL Magic Packet to Target 1")
     
     if (pikvmEnabled && pikvmIp) {
         logDebug "PiKVM fallback is active; scheduling verification ping in 30s..."
@@ -263,19 +341,19 @@ def wakeAiBox() {
 def verifyAiBoxWake() {
     boolean online = checkPing(aiBoxIp)
     if (!online && pikvmEnabled) {
-        logWarn "ai-box did not wake via WoL within 30s. Triggering PiKVM ATX pulse fallback..."
+        logWarn "Target 1 did not wake via WoL within 30s. Triggering PiKVM ATX pulse fallback..."
         pulsePikvmAtx()
     }
 }
 
-// --- Target 2: tv-box ---
+// --- Target 2: Windows PC (e.g. tv-box) ---
 
 def sleepTvBox() {
     if (!tvBoxIp) {
-        logWarn "tv-box IP is not configured."
+        logWarn "Target 2 IP is not configured."
         return
     }
-    logInfo "Requesting S3 deep sleep for tv-box (${tvBoxIp}:${tvBoxPort})..."
+    logInfo "Requesting S3 deep sleep for Target 2 (${tvBoxIp}:${tvBoxPort})..."
     
     Map params = [
         uri: "http://${tvBoxIp}:${tvBoxPort}/sleep",
@@ -297,23 +375,23 @@ def sleepTvBox() {
 def handleTvBoxSleepResponse(response, data) {
     int status = response.status
     if (status == 200) {
-        logInfo "tv-box accepted sleep request. Entering S3 Standby..."
-        sendEvent(name: "tvBoxPresence", value: "sleeping", descriptionText: "tv-box entering S3 Standby")
+        logInfo "Target 2 accepted sleep request. Entering S3 Standby..."
+        sendEvent(name: "tvBoxPresence", value: "sleeping", descriptionText: "Target 2 entering S3 Standby")
     } else if (status == 401 || status == 403) {
-        logWarn "tv-box sleep rejected: Authentication failed (Status ${status}). Check shared secret token."
+        logWarn "Target 2 sleep rejected: Authentication failed (Status ${status}). Check shared secret token."
     } else {
-        logWarn "tv-box sleep request returned HTTP ${status}: ${response.errorMessage ?: 'Unknown error'}"
+        logWarn "Target 2 sleep request returned HTTP ${status}: ${response.errorMessage ?: 'Unknown error'}"
     }
 }
 
 def wakeTvBox() {
     if (!tvBoxMac) {
-        logWarn "tv-box MAC address is not configured."
+        logWarn "Target 2 MAC address is not configured."
         return
     }
-    logInfo "Sending Wake-on-LAN Magic Packet to tv-box (${tvBoxMac})..."
+    logInfo "Sending Wake-on-LAN Magic Packet to Target 2 (${tvBoxMac})..."
     sendWoL(tvBoxMac)
-    sendEvent(name: "tvBoxPresence", value: "waking", descriptionText: "Sent WoL Magic Packet to tv-box")
+    sendEvent(name: "tvBoxPresence", value: "waking", descriptionText: "Sent WoL Magic Packet to Target 2")
 }
 
 // --- Wake-on-LAN Protocol Helper ---
